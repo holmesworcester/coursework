@@ -79,20 +79,17 @@
 
 ; Editor -> String
 ; a function editor-pre that substitutes my earlier structure by showing all the text before the cursor
-; can i do this or does it make the struct mad?
 (define (editor-pre e)
   (substring (editor-s e) 0 (editor-i e)))
 
 ; Editor -> String
 ; a function editor-post that substitutes my earlier structure by showing all the text after the cursor
-
 (define (editor-post e)
   (substring (editor-s e) (editor-i e)))
   
 ; Editor -> Image
 ; draw-text is a function that renders all the text in the editor window
 ; having this as a separate function is helpful for limiting the width of text
-
 (define (draw-text e)
   (beside (draw-string (editor-pre e)) CURSOR (draw-string (editor-post e))))
 
@@ -100,9 +97,6 @@
 ; takes a string and renders an image in the appropriate font size and color
 (define (draw-string t)
   (text t TEXT-SIZE TEXT-COLOR))
-
-; Wishlist
-; rewrite all the auxiliary functions.
 
 ; Editor -> Editor
 ; move-left moves the cursor left by decrementing the index if not zero
@@ -126,7 +120,7 @@
 
 ; Editor -> Editor
 ; backspace removes the last letter of the first string and leaves the second string alone
-; we can use the function remove last
+; uses the function remove-last
 
 (define (backspace e)
   (cond
@@ -136,20 +130,6 @@
 (check-expect (backspace helloworld-) helloworl-)
 (check-expect (backspace -helloworld) -helloworld)
 (check-expect (backspace hello-world) hell-world)
-
-; String -> Letter
-; last-letter returns the last letter of a string
-
-(define (last-letter s)
-  (cond
-    [(string=? s "") s]
-    [else (substring s (- (string-length s) 1))]))
-
-
-(check-expect (last-letter "helloworld") "d")
-(check-expect (last-letter "hello") "o")
-(check-expect (last-letter "") "")
-(check-expect (last-letter "h") "h")
 
 ; String -> String
 ; remove-last removes the last letter of a string
