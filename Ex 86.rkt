@@ -99,12 +99,9 @@
 (define (draw-string t)
   (text t TEXT-SIZE TEXT-COLOR))
 
-; Wishlist
-
-
 ; Editor -> Editor
 ; move-left moves the cursor left by moving the last letter of the first string (editor-pre e)
-; to the first letter of the second string e-post
+; to the first letter of the second string e-post <--- hah look i made this js structures syntax mistake again in my comments.
 ; unless you're all the way left already,
 ; that is, unless the pre string is "" but this will be dealt with by remove-last and last-letter
 (define (move-left e)
@@ -194,13 +191,6 @@
 
 (check-expect (add-letter hello-world "k") hellok-world)
 (check-expect (add-letter helloworl- "d") helloworld-)
-(check-expect (add-letter (make-editor "this ridiculously stupidly long chunk of text" "is too long")) (make-editor "this ridiculously stupidly long chunk of text" "is too long"))
-
-; add another function that renders the contents of add letter
-
-; add a limit-length function for add-letter that returns e if (add-letter e ke) is too big and put that in main
-
-
 
 (run (make-editor "" ""))
 
