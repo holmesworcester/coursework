@@ -21,6 +21,8 @@
 
 ; graphical constants
 ; there aren't really any graphical constants
+
+; the only feature of this world is happiness. represented by a number ha.
   
 ; WISHLIST
 
@@ -78,4 +80,3 @@
             [on-tick tock]
             [on-key change-happiness])) ; HELP. I think this is right
 
-; the only feature of this world is happiness. represented by a number ha.
