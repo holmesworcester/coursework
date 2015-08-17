@@ -38,6 +38,7 @@
 (define UFO-WIDTH 30)
 (define UFO (overlay (circle UFO-HEIGHT "solid" "red") (rectangle UFO-WIDTH 4 "solid" "red")))
 (define UFO-SPEED 3)
+(define UFORANDOM 4)
 
 
 ; Data Definitions
@@ -67,12 +68,14 @@
 (define tank-r-r (make-tank WIDTH TANK-SPEED))
 (define tank-m-r (make-tank MIDDLE TANK-SPEED))
 (define tank-m-l (make-tank MIDDLE (* TANK-SPEED -1)))
+(define tank-m-0 (make-tank MIDDLE 0))
 
 ; UFO is a Position (make-posn x y) 
 ; interpretation: the x,y coordinates of a UFO
 ; examples of UFO: 
 
 (define ufostart (make-posn MIDDLE 0))
+(define ufodown1 (make-posn MIDDLE UFO-SPEED))
 (define ufohalfway (make-posn MIDDLE (/ HEIGHT 2)))
 (define ufoplanet (make-posn MIDDLE (- HEIGHT LAND-HEIGHT)))
 
@@ -84,6 +87,8 @@
 (define misslestart (make-posn MIDDLE MISSLE-STARTY))
 (define missleend (make-posn MIDDLE 0)) ; could be nicer than 0 but that's fine for now
 (define misslemid (make-posn MIDDLE (/ HEIGHT 2))) ; a missle halfway through its life.
+(define missle-close-hit (make-posn (+ MIDDLE (/ R 2)) (/ HEIGHT 2))) ; should be a hit, since (/ R 2) is less than R.
+(define missle-close-miss (make-posn (+ MIDDLE R) (/ HEIGHT 2))) ; should be a miss, since in-reach? requires "closeness" to be strictly less than R
 
 ; Aim is a structure (make-aim tank ufo) where tank is a Tank and ufo is a UFO.
 ; interpretation: the state of the world while the tank is aiming at the UFO but has not fired
@@ -91,7 +96,8 @@
 
 (define-struct aim (tank ufo))
 
-(define aimstart (make-aim tank-m-r ufostart))
+(define aimstart (make-aim tank-m-0 ufostart))
+(define aimufodown1 (make-aim tank-m-0 ufodown1))
 (define aimok (make-aim tank-r-r ufostart))
 (define aimlose (make-aim tank-l-l ufoplanet))
 
@@ -102,7 +108,10 @@
 
 (define firedstart (make-fired tank-m-r ufostart misslestart))
 (define firedmiss (make-fired tank-m-r ufohalfway missleend))
-(define firedhit (make-fired tank-m-r ufohalfway (make-posn (/ (image-width UFO) 4) (/ HEIGHT 2)))) ;defined a hit in terms of 1/4 the width of the UFO
+(define fireddirecthit (make-fired tank-m-r ufohalfway ufohalfway)) ;hit is totally direct (missle and ufo have the same position ufohalfway
+; MAKE ANOTHER EXAMPLE WHERE ITS NOT A DIRECTHIT
+(define firedclosehit (make-fired tank-m-r ufohalfway missle-close-hit))
+(define firedclosemiss (make-fired tank-m-r ufohalfway missle-close-miss))
 
 ; Location is one of:
 ; – Posn
@@ -117,7 +126,7 @@
 ; -- Fired
 ; see TankUFOMissle and TankUFO for examples <-- I could rewrite but "DRY"
 
-(define sigshit firedhit) ;question: I don't really need these examples here do i?
+(define sigshit fireddirecthit) ;question: I don't really need these examples here do i?
 (define sigsfire firedstart)
 (define sigsstart aimstart)
 (define sigslose aimlose)
@@ -149,12 +158,7 @@
 
 ; SIGS -> SIGS
 ; tock moves Tank, UFO, and Missle in the ways that they are pre-determined to on each clock tick.
-; let's think about this in a moment.
-; whether the state is aim or fired, the tank should move according to its velocity and direction
-; whether the state is aim or fired, the UFO should move randomly as described. (look up)
-; if the state is fired, the missle should move until it is off the screen.
-; if the missle moves off the screen, the state should turn back to an aim state.
-; write tests for each one of these cases, and add that to the function, and continue.
+; this is just a composing function, so I'm putting all the tests in the sub functions.
 
 (define (si-move s)
   (cond
@@ -174,47 +178,69 @@
 
 (check-expect (tank-step (make-tank 100 -2)) (make-tank 98 -2))
 (check-expect (tank-step (make-tank 100 2)) (make-tank 102 2))
-(check-expect (tank-step (make-tank WORLD-WIDTH 2)) (make-tank WORLD-WIDTH 2))
+(check-expect (tank-step (make-tank WIDTH 2)) (make-tank WIDTH 2))
 (check-expect (tank-step (make-tank 0 -2)) (make-tank 0 -2))
 
 (define (tank-step t)
   (make-tank (x-limit (+ (tank-x t) (tank-vel t))) (tank-vel t)))
 
 ; Number -> Number
-; x-limit keeps the x coordinate of objects inside (0, WORLD-WIDTH) when they move
+; x-limit keeps the x coordinate of objects inside (0, WIDTH) when they move.
 
 (check-expect (x-limit -5) 0)
 (check-expect (x-limit 0) 0)
 (check-expect (x-limit 1) 1)
-(check-expect (x-limit WORLD-WIDTH) WORLD-WIDTH)
-(check-expect (x-limit (+ WORLD-WIDTH 5)) WORLD-WIDTH)
-(check-expect (x-limit (- WORLD-WIDTH 1)) (- WORLD-WIDTH 1))
+(check-expect (x-limit WIDTH) WIDTH)
+(check-expect (x-limit (+ WIDTH 5)) WIDTH)
+(check-expect (x-limit (- WIDTH 1)) (- WIDTH 1))
 
 (define (x-limit x)
   (cond
     [(< x 0) 0]
-    [(> x WORLD-WIDTH) WORLD-WIDTH]
+    [(> x WIDTH) WIDTH]
     [else x]))
 
 
 ; SIGS -> SIGS
 ; ufo-move moves the tank on a clock tick, down the screen and randomly to the left and right.
+; this another composing function so I'm going to put tests in sub-functions.
+; also, I don't know how to write tests for a function that involves a random
 
 (define (ufo-move s)
   (ufo-random (ufo-down s)))
 
 ; SIGS -> SIGS
-; ufo-random moves the ufo in SIGS s left and right around the screen randomly
-; as per the instructions (look them up)
-; DO THIS NEXT!!!
+; ufo-random moves the ufo in SIGS s in "small random jumps to the left or right"
+; note that it doesn't call the random function.
 
 (define (ufo-random s)
   (cond
-    [(fired? s)(make-fired ... tank ufo missle)]
-    [(aim? s)(make-aim tank ufo)]))
+    [(fired? s) (make-fired (fired-tank s) (ufo-jump (fired-ufo s)) (fired-missle s))] ;how would I make a move-thing function that would work for tank and ufo and MISSLE? 
+    [(aim? s) (make-aim (aim-tank s) (ufo-jump (aim-ufo s)))]))
+
+; Position, Number -> Position
+; xmove moves a Posn pos (e.g. a UFO or a Tank) left or right by adding a positive or negative number to (posn-x pos)
+; xmove uses limitx to keep x inside the range (0, WIDTH)
+; I could use this for my tank moving function at some point.
+
+(check-expect (xmove (make-posn 100 100) 10) (make-posn 110 100))
+(check-expect (xmove (make-posn 100 100) -10) (make-posn 90 100))
+(check-expect (xmove (make-posn 0 100) -10) (make-posn 0 100))
+(check-expect (xmove (make-posn WIDTH 100) 10) (make-posn WIDTH 100))
+
+(define (xmove pos n)
+  (make-posn (x-limit (+ n (posn-x pos))) (posn-y pos)))
+
+; Posn -> Posn
+; ufo-jump moves a Posn (UFO) u randomly left or right by adding a number in [-UFORANDOM,UFORANDOM] to it.
+
+(define (ufo-jump u)
+  (xmove u (- (random (+ (* UFORANDOM 2) 1)) UFORANDOM))) ;this looks complicated, but it's just to take the range of random positive integers and center it around zero.
 
 ; SIGS -> SIGS
 ; ufo-down moves the ufo in SIGS s down the screen at a regular pace at a speed from constants.
+
+(check-expect (ufo-down aimstart) aimufodown1)
 
 (define (ufo-down s)
   (cond
@@ -225,8 +251,10 @@
 ; ufo-step moves a UFO u down the screen by adding the constant UFO-SPEED to its y coordinate
 ; (posn-y u)
 
+(check-expect (ufo-step (make-posn 100 100)) (make-posn 100 (+ 100 UFO-SPEED)))
+
 (define (ufo-step u)
-  (make-ufo (posn-x u) (- (posn-y u) UFO-SPEED)))
+  (make-posn (posn-x u) (+ (posn-y u) UFO-SPEED)))
 
 ; SIGS -> SIGS
 ; missle-move moves the missle on a clock tick, down the screen and randomly to the left and right.
@@ -251,7 +279,7 @@
 (check-expect (missle-step (make-posn 100 100)) (make-posn 100 (- 100 MISSLE-SPEED)))
 
 (define (missle-step m)
-  (make-posn (posn-x (fired-missle m)) (- (posn-y (fired-missle m)) MISSLE-SPEED)))
+  (make-posn (posn-x m) (- (posn-y m) MISSLE-SPEED)))
 
 ; SIGS, KeyEvent -> SIGS
 ; key handles all key events and changed the SIGS appropriately
@@ -264,7 +292,7 @@
 ; that is, either when the missle hits the UFO or when the UFO hits ("lands on") the planet.
 
 (define (si-game-over? s)
-  (or (ufo-hit-planet? s) (ufo-hit-missle? s)))
+  (or (game-over-lose? s) (game-over-win? s)))
 
 ; SIGS -> Image
 ; si-render-final renders the final screen of the game when the game ends.
@@ -273,8 +301,8 @@
 
 (define (si-render-final s)
   (cond
-    [(ufo-hit-planet? s)(text-render WIN-TEXT (render s))]
-    [(ufo-hit-missle? s)(text-render LOSE-TEXT (render s))]))
+    [(game-over-lose? s)(text-render LOSE-TEXT (render s))]
+    [(game-over-win? s)(text-render WIN-TEXT (render s))]))
 
 ; String, Image -> Image
 ; text-render overlays the text for a given string s in constant font and color
@@ -284,18 +312,16 @@
   (overlay (text s FONT-SIZE FONT-COLOR) i))
 
 ; SIGS -> Boolean
-; ufo-planet? tells me if the UFO has hit the planet for a given SIGS s.
-; this is important beacuse the player loses.
+; game-over-lose? tells me if the player has lost, that is, if the UFO has hit the planet for a given SIGS s.
 
-(check-expect (ufo-hit-planet? firedhit) false)
-(check-expect (ufo-hit-planet? aimstart) false)
-(check-expect (ufo-hit-planet? aimok) false)
-(check-expect (ufo-hit-planet? aimlose) true)
-(check-expect (ufo-hit-planet? firedstart) false)
-(check-expect (ufo-hit-planet? firedmiss) false)
-(check-expect (ufo-hit-planet? ufoplanet) true)
+(check-expect (game-over-lose? fireddirecthit) false)
+(check-expect (game-over-lose? aimstart) false)
+(check-expect (game-over-lose? aimok) false)
+(check-expect (game-over-lose? aimlose) true)
+(check-expect (game-over-lose? firedstart) false)
+(check-expect (game-over-lose? firedmiss) false)
                
-(define (ufo-hit-planet? s)
+(define (game-over-lose? s)
   (cond
     [(fired? s)(ufo-landed? (fired-ufo s))]
     [(aim? s)(ufo-landed? (aim-ufo s))]))
@@ -303,26 +329,26 @@
 ; UFO -> Boolean
 ; ufo-landed? tells me if a given UFO u has landed, given some constants about where land is.
 
-(check-expect (ufo-landed? (aim-ufo ufoplanet)) true)
 (check-expect (ufo-landed? (aim-ufo aimlose)) true)
 (check-expect (ufo-landed? (aim-ufo aimstart)) false)
-(check-expect (ufo-landed? (aim-ufo ufoplanet)) true)
+(check-expect (ufo-landed? (aim-ufo aimok)) false)
 
 (define (ufo-landed? u)
   (in-reach? (- (- HEIGHT LAND-HEIGHT) (posn-y u))))
 
 ; SIGS -> Boolean
-; ufo-hit-missle? tells me if the Missle has hit the UFO for a given SIGS s.
-; this is important because the player wins.
+; game-over-win? tells me if the player has won, that is if the Missle has hit the UFO for a given SIGS s.
 
-(check-expect (ufo-hit-missle? firedhit) true)
-(check-expect (ufo-hit-missle? aimstart) false)
-(check-expect (ufo-hit-missle? aimok) false)
-(check-expect (ufo-hit-missle? aimlose) false)
-(check-expect (ufo-hit-missle? firedstart) false)
-(check-expect (ufo-hit-missle? firedmiss) false)
+(check-expect (game-over-win? fireddirecthit) true)
+(check-expect (game-over-win? aimstart) false)
+(check-expect (game-over-win? aimok) false)
+(check-expect (game-over-win? aimlose) false)
+(check-expect (game-over-win? firedstart) false)
+(check-expect (game-over-win? firedmiss) false)
+(check-expect (game-over-win? firedclosemiss) false)
+(check-expect (game-over-win? firedclosehit) true)
                
-(define (ufo-hit-missle? s)
+(define (game-over-win? s)
   (cond
     [(fired? s)(in-reach? (distance (fired-missle s) (fired-ufo s)))]
     [else false]))
