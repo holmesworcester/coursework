@@ -288,8 +288,18 @@
 (define (key s ke) s)
 
 ; SIGS -> Boolean
-; si-game-over? returns true when the game is over
+; si-game-over? returns true when the game is over, whether the player won or lost,
 ; that is, either when the missle hits the UFO or when the UFO hits ("lands on") the planet.
+
+(check-expect (si-game-over? aimstart) false)
+(check-expect (si-game-over? aimofudown1) false)
+(check-expect (si-game-over? aimok) false)
+(check-expect (si-game-over? aimlose) true)
+(check-expect (si-game-over? firedstart) false)
+(check-expect (si-game-over? firedmiss) false)
+(check-expect (si-game-over? firedlose) true)
+(check-expect (si-game-over? firedclosehit) true)
+(check-expect (si-game-over? fireddirecthit) true)
 
 (define (si-game-over? s)
   (or (game-over-lose? s) (game-over-win? s)))
@@ -315,6 +325,7 @@
 ; game-over-lose? tells me if the player has lost, that is, if the UFO has hit the planet for a given SIGS s.
 
 (check-expect (game-over-lose? fireddirecthit) false)
+(check-expect (game-over-lose? firedclosehit) false)
 (check-expect (game-over-lose? aimstart) false)
 (check-expect (game-over-lose? aimok) false)
 (check-expect (game-over-lose? aimlose) true)
