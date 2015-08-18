@@ -30,9 +30,9 @@
 (define TANK-Y (- HEIGHT (image-height LAND)))
 (define TANK-SPEED 3)
 
-(define missile (rectangle 2 6 "solid" "orange"))
-(define missile-SPEED 10)
-(define missile-STARTY (- TANK-Y (/ (image-height missile) 2)))
+(define MISSLE (rectangle 2 6 "solid" "orange"))
+(define MISSLE-SPEED 10)
+(define MISSLE-STARTY (- TANK-Y (/ (image-height MISSLE) 2)))
 
 (define UFO-HEIGHT 7)
 (define UFO-WIDTH 30)
@@ -80,14 +80,14 @@
 (define ufoplanet (make-posn MIDDLE (- HEIGHT LAND-HEIGHT)))
 
 
-; Missile is a Position (make-posn x y)
-; interpretation: the x,y coordinates of a missile
-; examples of missile:
+; Missle is a Position (make-posn x y)
+; interpretation: the x,y coordinates of a missle
+; examples of missle:
 
-(define missilestart (make-posn MIDDLE missile-STARTY))
-(define missileupone (make-posn MIDDLE (- missile-STARTY missile-SPEED)))
-(define missileend (make-posn MIDDLE 0)) ; could be nicer than 0 but that's fine for now
-(define missilemid (make-posn MIDDLE (/ HEIGHT 2))) ; a missle halfway through its life.
+(define misslestart (make-posn MIDDLE MISSLE-STARTY))
+(define missleupone (make-posn MIDDLE (- MISSLE-STARTY MISSLE-SPEED)))
+(define missleend (make-posn MIDDLE 0)) ; could be nicer than 0 but that's fine for now
+(define misslemid (make-posn MIDDLE (/ HEIGHT 2))) ; a missle halfway through its life.
 (define missle-close-hit (make-posn (+ MIDDLE (/ R 2)) (/ HEIGHT 2))) ; should be a hit, since (/ R 2) is less than R.
 (define missle-close-miss (make-posn (+ MIDDLE R) (/ HEIGHT 2))) ; should be a miss, since in-reach? requires "closeness" to be strictly less than R
 
@@ -407,7 +407,7 @@
                
 (define (game-over-win? s)
   (cond
-    [(fired? s)(in-reach? (distance (fired-missile s) (fired-ufo s)))]
+    [(fired? s)(in-reach? (distance (fired-missle s) (fired-ufo s)))]
     [else false]))
 
 ; Position, Position -> Position (where posn-x and posn-y are both greater than 0)
@@ -454,10 +454,10 @@
 (define (ufo-render u i)
   (place-image UFO (posn-x u) (posn-y u) i))
 
-; missile, Image -> Image
-; missile-render draws a missile m over an image i
+; missle, Image -> Image
+; missle-render draws a missle m over an image i
 
-(define (missile-render m i)
-  (place-image missile (posn-x m) (posn-y m) i))
+(define (missle-render m i)
+  (place-image MISSLE (posn-x m) (posn-y m) i))
 
 (main sigsstart)
