@@ -30,9 +30,9 @@
 (define TANK-Y (- HEIGHT (image-height LAND)))
 (define TANK-SPEED 3)
 
-(define missile (rectangle 2 6 "solid" "orange"))
-(define missile-SPEED 10)
-(define missile-STARTY (- TANK-Y (/ (image-height missile) 2)))
+(define MISSILE (rectangle 2 6 "solid" "orange"))
+(define MISSILE-SPEED 10)
+(define MISSILE-STARTY (- TANK-Y (/ (image-height MISSILE) 2)))
 
 (define UFO-HEIGHT 7)
 (define UFO-WIDTH 30)
@@ -43,7 +43,7 @@
 ; Data Definitions
 
 ; TankPosition is a Number in (0,WIDTH)
-; interpretation: the position of the tank on the x-axis
+; interpretation: the position of the Tank on the x-axis
 ; examples:
 
 (define TANK-MIDDLE MIDDLE)
@@ -51,10 +51,10 @@
 (define TANK-RIGHT WIDTH)
 
 ; Velocity is a Number.
-; interpretation: the speed and direction of the tank (positive is to the right, negative to the left)
+; interpretation: the speed and direction of the Tank (positive is to the right, negative to the left)
 
 ; TankPosition is an Integer in (0, WIDTH)
-; interpretation: the position of the tank along the x axis.
+; interpretation: the position of the Tank along the x axis.
 
 ; Tank is a structure (make-tank TankPosition Velocity)
 
@@ -77,25 +77,56 @@
 (define ufohalfway (make-posn MIDDLE (/ HEIGHT 2)))
 (define ufoplanet (make-posn MIDDLE (- HEIGHT LAND-HEIGHT)))
 
-; Location is one of:
-; – Posn
-; – Number
-; interpretation Posn are positions on the Cartesian plane,
-; Numbers are positions on either the x- or the y-axis.
-; this definition helps me think about the function in-reach?
 
-
-(define-struct sigs.v2 [ufo tank missile])
-
-; SIGS.v2 (short for version 2) 
-; is (make-sigs UFO Tank MissileOrNot)
-; interpretation represents the state of the space invader game 
- 
 ; A MissileOrNot is one of: 
 ; – #false
 ; – Posn
-; interpretation #false means the missile hasn't been fired yet;
-; Posn says the missile has been fired and is at the specified location. 
+; interpretation #false means the MissileOrNot hasn't been fired yet;
+; Posn says the MissileOrNot has been fired and is at the specified location.
+
+(define missilestart (make-posn MIDDLE MISSILE-STARTY))
+(define missileupone (make-posn MIDDLE (- MISSILE-STARTY MISSILE-SPEED)))
+(define missileend (make-posn MIDDLE 0)) ; could be nicer than 0 but that's fine for now
+(define missilemid (make-posn MIDDLE (/ HEIGHT 2))) ; a Missile halfway through its life.
+(define missile-close-hit (make-posn (+ MIDDLE (/ R 2)) (/ HEIGHT 2))) ; should be a hit, since (/ R 2) is less than R.
+(define missile-close-miss (make-posn (+ MIDDLE R) (/ HEIGHT 2))) ; should be a miss, since in-reach? requires "closeness" to be strictly less than R
+(define missilenot false)
+
+
+; Location is one of:
+; – MissileOrNot
+; – Number
+; interpretation Posn are positions on the Cartesian plane,
+; Numbers are positions on either the x- or the y-axis.
+; False means the object doesn't exist at all.
+; Note: this definition helps me think about the function in-reach?
+
+
+(define-struct sigs [tank ufo missile])
+
+; SIGS
+; is (make-sigs Tank UFO MissileOrNot)
+; interpretation represents the state of the space invader game 
+; Examples: (aim is the shorthand for situations with no missile, and fired is the shorthand for situations with a missile)
+
+(define aimstart (make-sigs tank-m-0 ufostart false))
+(define aimufodown1 (make-sigs tank-m-0 ufodown1 false))
+(define aimok (make-sigs tank-r-r ufostart false))
+(define aimlose (make-sigs tank-l-l ufoplanet false))
+(define aimhalfway (make-sigs tank-l-l ufohalfway false))
+
+(define firedstart (make-sigs tank-m-0 ufostart missilestart))
+(define firedupone (make-sigs tank-m-0 ufostart missileupone))
+(define firedmiss (make-sigs tank-m-r ufohalfway missileend))
+(define fireddirecthit (make-sigs tank-m-r ufohalfway ufohalfway)) ;hit is totally direct (missile and ufo have the same position ufohalfway
+(define firedclosehit (make-sigs tank-m-r ufohalfway missile-close-hit))
+(define firedclosemiss (make-sigs tank-m-r ufohalfway missile-close-miss))
+(define firedend (make-sigs tank-l-l ufohalfway (make-posn MIDDLE -1)))
+
+(define sigshit fireddirecthit) 
+(define sigsfire firedstart)
+(define sigsstart aimstart)
+(define sigslose aimlose)
 
 
 ; FUNCTIONS
@@ -106,46 +137,48 @@
 
 (define (main s)
   (big-bang s
-            [to-draw render]
+            [to-draw si-render]
             [on-tick si-move]
             [on-key si-control]
             [stop-when si-game-over? si-render-final]))
 
 
-; SIGS.v2 -> Image 
+; SIGS -> Image 
 ; renders the given game state and added it to BACKGROUND
-(define (si-render.v2 s)
-  (tank-render (fired-tank s)
-               (ufo-render (fired-ufo s)
-                            (missile-render.v2 (fired-missile s)
+(define (si-render s)
+  (tank-render (sigs-tank s)
+               (ufo-render (sigs-ufo s)
+                            (missile-render (sigs-missile s)
                                                BACKGROUND))))
 
 ; SIGS -> SIGS
-; tock moves Tank, UFO, and Missle in the ways that they are pre-determined to on each clock tick.
+; tock moves Tank, UFO, and Missile in the ways that they are pre-determined to on each clock tick.
 ; this is just a composing function, so I'm putting all the tests in the sub functions.
 
+; (check-expect (si-move aimstart) (make-sigs (sigs-tank aimstart) ufodown1 false)) can't do this test because it's random.
+(check-expect (> (posn-y (sigs-ufo (si-move aimstart))) (posn-y (sigs-ufo aimstart))) true) ; make sure UFO moves down.
+(check-expect (- (posn-y (sigs-ufo (si-move aimstart))) (posn-y (sigs-ufo aimstart))) UFO-SPEED) ; make sure it moves it down by UFO-SPEED 
+
 (define (si-move s)
-  (cond
-    [(fired? s)(tank-move (missle-move (ufo-move s)))]
-    [(aim? s)(tank-move (ufo-move s))]))
+  (tank-move (missile-move (ufo-move s))))
 
 ; SIGS -> SIGS
-; si-control moves the tank left and right when user hits the respective arrow keys, and launches a missle when spacebar is pressed.
+; si-control moves the tank left and right when user hits the respective arrow keys, and launches a Missile when spacebar is pressed.
 
-(check-expect (si-control aimstart " ") firedstart) ; make sure space launches the missle
-(check-expect (tank-vel (aim-tank (si-control aimstart "right"))) TANK-SPEED) ; is this a valid way to write tests?
-(check-expect (tank-vel (aim-tank (si-control aimstart "left"))) (* TANK-SPEED -1))
+(check-expect (si-control aimstart " ") firedstart) ; make sure space launches the missile
+(check-expect (tank-vel (sigs-tank (si-control aimstart "right"))) TANK-SPEED) ; is this a valid way to write tests?
+(check-expect (tank-vel (sigs-tank (si-control aimstart "left"))) (* TANK-SPEED -1))
 
 (define (si-control s ke)
   (cond
-    [(string=? ke " ")(fire-if-aim s)] ; fires the missle
+    [(string=? ke " ")(fire s)] ; fires the missile
     [(string=? ke "left")(update-tank-vel s (* TANK-SPEED -1))] ;
     [(string=? ke "right")(update-tank-vel s TANK-SPEED)]
     [else s]))
 
 ; SIGS -> Boolean
 ; si-game-over? returns true when the game is over, whether the player won or lost,
-; that is, either when the missle hits the UFO or when the UFO hits ("lands on") the planet.
+; that is, either when the Missile hits the UFO or when the UFO hits ("lands on") the planet.
 
 (check-expect (si-game-over? aimstart) false)
 (check-expect (si-game-over? aimufodown1) false)
@@ -162,30 +195,27 @@
 
 
 ; SIGS -> SIGS
-; If the SIGS s is an Aim, fire-if-aim will fire the missle,
-; by changing the Aim to a Fired with all the same values for Tank (fired-tank) and UFO (fired-ufo)
-; and with a Missle (fired-missle) with the same x value as the Tank (tank-x (aim-tank))
-; and the y value MISSLE-STARTY
-; If the SIGS s is a Fired, it does nothing.
+; fire will fire the missile,
+; by changing MissileOrNot (sigs-missile) to have the same x value as tank (tank-x (sigs-tank))
+; and the y value MISSILE-STARTY if (sigs-missile s) is false.
+; If sigs-missile is not a Boolean (a Posn) it does nothing.
 
-(check-expect (fire-if-aim firedstart) firedstart) ; make sure it does nothing if already fired.
-(check-expect (fire-if-aim firedmiss) firedmiss)
-(check-expect (fire-if-aim aimstart) firedstart) ; make sure it changes the state
-(check-expect (posn-x (fired-missle (fire-if-aim aimstart))) (posn-x (aim-tank aimstart))) ; make sure the x value is the same as the tank
-(check-expect (posn-y (fired-missle (fire-if-aim aimstart))) MISSLE-STARTY) ; make sure the y value is MISSLE-STARTY
+(check-expect (fire firedstart) firedstart) ; make sure it does nothing if already fired.
+(check-expect (fire firedmiss) firedmiss)
+(check-expect (fire aimstart) firedstart) ; make sure it changes the state
+(check-expect (posn-x (sigs-missile (fire aimstart))) (tank-x (sigs-tank aimstart))) ; make sure the x value is the same as the tank
+(check-expect (posn-y (sigs-missile (fire aimstart))) MISSILE-STARTY) ; make sure the y value is MISSILE-STARTY
 
-(define (fire-if-aim s)
+(define (fire s)
   (cond
-    [(aim? s) (make-fired (aim-tank s) (aim-ufo s) (make-posn (tank-x (aim-tank s)) MISSLE-STARTY))] ;makes a "fired" where everything is the same except adding a missle with the x value of the tank and the y value MISSLE-STARTY
-    [else s])) ;if s is not an Aim, do nothing.
-              
+    [(boolean? (sigs-missile s)) (make-sigs (sigs-tank s) (sigs-ufo s) (make-posn (tank-x (sigs-tank s)) MISSILE-STARTY))] ;makes a "fired" where everything is the same except adding a Missile with the x value of the tank and the y value MISSILE-STARTY
+    [else s])) ;if Missile is not a Boolean then it's launched, so do nothing.
+
 ; SIGS -> SIGS
 ; tank-move moves the tank on a clock tick, depending on direction and TANK-SPEED.
 
 (define (tank-move s)
-  (cond
-    [(fired? s)(make-fired (tank-step (fired-tank s)) (fired-ufo s) (fired-missle s))]
-    [(aim? s)(make-aim (tank-step (aim-tank s)) (aim-ufo s))])) ;having to do this conditional all the time seems like a real weakness of the language or the approach.
+  (make-sigs (tank-step (sigs-tank s)) (sigs-ufo s) (sigs-missile s)))
 
 ; Tank -> Tank
 ; tank-step moves the tank t (tank-vel t)
@@ -201,15 +231,12 @@
 ; SIGS, Number -> SIGS
 ; update-tank-vel updates the velocity of the SIGS s to the Number v
 
-(check-expect (update-tank-vel aimstart TANK-SPEED) (make-aim tank-m-r ufostart))
-(check-expect (update-tank-vel aimstart (* TANK-SPEED -1)) (make-aim tank-m-l ufostart))
-(check-expect (update-tank-vel (make-aim tank-m-l ufostart) TANK-SPEED) (make-aim tank-m-r ufostart))
-; I should add tests in here for fired states
+(check-expect (update-tank-vel aimstart TANK-SPEED) (make-sigs tank-m-r ufostart false))
+(check-expect (update-tank-vel aimstart (* TANK-SPEED -1)) (make-sigs tank-m-l ufostart false))
+(check-expect (update-tank-vel (make-sigs tank-m-l ufostart false) TANK-SPEED) (make-sigs tank-m-r ufostart false))
 
 (define (update-tank-vel s v)
-  (cond
-    [(aim? s) (make-aim (make-tank (tank-x (aim-tank s)) v) (aim-ufo s))] ; leaves everything the same except the tank velocity which it replaces with v
-    [(fired? s) (make-fired (make-tank (tank-x (fired-tank s)) v) (fired-ufo s) (fired-missle s))])) ; ditto here
+  (make-sigs (make-tank (tank-x (sigs-tank s)) v) (sigs-ufo s) (sigs-missile s))) ; leaves everything except the tank-vel which it updates.
 
 
 ; Number -> Number
@@ -242,9 +269,7 @@
 ; note that it doesn't call the random function.
 
 (define (ufo-random s)
-  (cond
-    [(fired? s) (make-fired (fired-tank s) (ufo-jump (fired-ufo s)) (fired-missle s))] ;how would I make a move-thing function that would work for tank and ufo and MISSLE? 
-    [(aim? s) (make-aim (aim-tank s) (ufo-jump (aim-ufo s)))]))
+  (make-sigs (sigs-tank s) (ufo-jump (sigs-ufo s)) (sigs-missile s))) 
 
 ; Position, Number -> Position
 ; xmove moves a Posn pos (e.g. a UFO or a Tank) left or right by adding a positive or negative number to (posn-x pos)
@@ -271,9 +296,7 @@
 (check-expect (ufo-down aimstart) aimufodown1)
 
 (define (ufo-down s)
-  (cond
-    [(fired? s)(make-fired (fired-tank s) (ufo-step (fired-ufo s)) (fired-missle s))]
-    [(aim? s)(make-aim (aim-tank s) (ufo-step (aim-ufo s)))]))
+  (make-sigs (sigs-tank s) (ufo-step (sigs-ufo s)) (sigs-missile s)))
 
 ; UFO -> UFO
 ; ufo-step moves a UFO u down the screen by adding the constant UFO-SPEED to its y coordinate
@@ -285,43 +308,54 @@
   (make-posn (posn-x u) (+ (posn-y u) UFO-SPEED)))
 
 ; SIGS -> SIGS
-; missle-move moves the missle on a clock tick, down the screen and randomly to the left and right.
-; if the missle moves off the screen missle-move returns an Aim state.
+; missile-move moves the Missile on a clock tick, down the screen and randomly to the left and right.
+; if the Missile moves off the screen missile-move returns an Aim state.
 
-(check-expect (missle-move firedstart) firedupone)
-(check-expect (missle-move firedend) aimhalfway)
-  
+(check-expect (missile-move firedstart) firedupone)
+(check-expect (missile-move firedend) aimhalfway)
+(check-expect (missile-move aimstart) aimstart)
 
-(define (missle-move s)
+(define (missile-move s)
+    (make-sigs (sigs-tank s) (sigs-ufo s) (missile-step (missile-limit (sigs-missile s))))) ;calls missile-limit which returns false if it's gone.
+
+; MissileOrNot -> MissileOrNot
+; takes a MissileOrNot m and returns the Missile m if it is still on screen, and "false" if the Missile is off screen (< (posn-y m) 0).
+; Note that if the MissileOrNot is false it will return false, so missile-move can be used on all SIGS.
+
+(check-expect (missile-limit false) false)
+(check-expect (missile-limit true) false)
+(check-expect (missile-limit (make-posn 10 10)) (make-posn 10 10))
+(check-expect (missile-limit (make-posn 10 -1)) false)
+
+(define (missile-limit m)
   (cond
-    [(missle-off-screen? s)(make-aim (fired-tank s) (fired-ufo s))] ;for the missle off screen condition
-    [(fired? s)(make-fired (fired-tank s) (fired-ufo s) (missle-step (fired-missle s)))]
-    [else s])) ;only fired states have a missle to move
-
-; Fired -> Boolean
-; finding its a lot harder to write tests for these than it is to write the function.
-
-(define (missle-off-screen? s)
-  (< (posn-y (fired-missle s)) 0))
+    [(boolean? m) false] ; adding this just to be clear. It it's false (or true!) then we want to return false.
+    [(< (posn-y m) 0) false] ; if (posn-y m) is "off the screen" then change it to false
+    [else m])) ; return the Missile.
   
-; Position -> Position
-; missle-step moves a missle m up the screen by the constant MISSLE-SPEED by subtracting
+; MissileOrNot -> MissileOrNot
+; missile-step moves a MissileOrNot m up the screen by the constant MISSILE-SPEED by subtracting
 ; from its y value (posn-y m) and leaving its x value (posn-x m) untouched.
+; missile-limit must return false if the Missile is false
 
-(check-expect (missle-step (make-posn 100 100)) (make-posn 100 (- 100 MISSLE-SPEED)))
+(check-expect (missile-step (make-posn 100 100)) (make-posn 100 (- 100 MISSILE-SPEED)))
+(check-expect (missile-step false) false)
+(check-expect (missile-step true) false)
 
-(define (missle-step m)
-  (make-posn (posn-x m) (- (posn-y m) MISSLE-SPEED)))
+(define (missile-step m)
+  (cond
+    [(boolean? m) false]
+    [else (make-posn (posn-x m) (- (posn-y m) MISSILE-SPEED))]))
 
 ; SIGS -> Image
 ; si-render-final renders the final screen of the game when the game ends.
-; it should say "game over: you win" if the missle hits the UFO.
-; or "game over: you lose" if the missle hits the planet.
+; it should say "game over: you win" if the Missile hits the UFO.
+; or "game over: you lose" if the Missile hits the planet.
 
 (define (si-render-final s)
   (cond
-    [(game-over-lose? s)(text-render LOSE-TEXT (render s))]
-    [(game-over-win? s)(text-render WIN-TEXT (render s))]))
+    [(game-over-lose? s)(text-render LOSE-TEXT (si-render s))]
+    [(game-over-win? s)(text-render WIN-TEXT (si-render s))]))
 
 ; String, Image -> Image
 ; text-render overlays the text for a given string s in constant font and color
@@ -342,22 +376,20 @@
 (check-expect (game-over-lose? firedmiss) false)
                
 (define (game-over-lose? s)
-  (cond
-    [(fired? s)(ufo-landed? (fired-ufo s))]
-    [(aim? s)(ufo-landed? (aim-ufo s))]))
+  (ufo-landed? (sigs-ufo s)))
 
 ; UFO -> Boolean
 ; ufo-landed? tells me if a given UFO u has landed, given some constants about where land is.
 
-(check-expect (ufo-landed? (aim-ufo aimlose)) true)
-(check-expect (ufo-landed? (aim-ufo aimstart)) false)
-(check-expect (ufo-landed? (aim-ufo aimok)) false)
+(check-expect (ufo-landed? (sigs-ufo aimlose)) true)
+(check-expect (ufo-landed? (sigs-ufo aimstart)) false)
+(check-expect (ufo-landed? (sigs-ufo aimok)) false)
 
 (define (ufo-landed? u)
   (in-reach? (- (- HEIGHT LAND-HEIGHT) (posn-y u))))
 
 ; SIGS -> Boolean
-; game-over-win? tells me if the player has won, that is if the Missle has hit the UFO for a given SIGS s.
+; game-over-win? tells me if the player has won, that is if the MissileOrNot has hit the UFO for a given SIGS s.
 
 (check-expect (game-over-win? fireddirecthit) true)
 (check-expect (game-over-win? aimstart) false)
@@ -369,13 +401,12 @@
 (check-expect (game-over-win? firedclosehit) true)
                
 (define (game-over-win? s)
-  (cond
-    [(fired? s)(in-reach? (distance (fired-missile s) (fired-ufo s)))]
-    [else false]))
+  (in-reach? (distance (sigs-missile s) (sigs-ufo s))))
 
-; Position, Position -> Position (where posn-x and posn-y are both greater than 0)
-; distance determines the distance between two positions, p1 and p2 and returns a special Position.
+; MissileOrNot, MissileOrNot -> MissileOrNot (where posn-x and posn-y are both greater than 0)
+; distance determines the distance between two positions, p1 and p2 and returns a special MissileOrNot.
 ; in which both posn-x and posn-y are greater than zero (using absolute value).
+; or in which the MissileOrNot is false, if one of the objects being compared is false.
 
 (check-expect (distance (make-posn 5 0) (make-posn 0 0)) (make-posn 5 0))
 (check-expect (distance (make-posn 0 5) (make-posn 0 0)) (make-posn 0 5))
@@ -385,15 +416,21 @@
 (check-expect (distance (make-posn -5 -5) (make-posn 0 0)) (make-posn 5 5))
 
 (define (distance loc1 loc2)
-  (make-posn (abs (- (posn-x loc1) (posn-x loc2))) (abs (- (posn-y loc1) (posn-y loc2)))))
+  (cond
+    [(boolean? loc1) false]
+    [(boolean? loc2) false]
+    [else (make-posn (abs (- (posn-x loc1) (posn-x loc2))) (abs (- (posn-y loc1) (posn-y loc2))))]))
 
 ; Location -> Boolean
 ; determines whether a location's distance to the origin is strictly less than some constant R
+; since a Location can be a MissileOrNot (false or a Posn) or a Number we take these three cases into account
 
 (check-expect (in-reach? (* 2 R)) false)
 (check-expect (in-reach? R) false)
 (check-expect (in-reach? (- R 1)) true)
 (check-expect (in-reach? 0) true)
+(check-expect (in-reach? false) false)
+(check-expect (in-reach? true) false) ; just in case?
 
 (check-expect (in-reach? (make-posn R R)) false)
 (check-expect (in-reach? (make-posn (/ R 2) (/ R 2))) true)
@@ -402,6 +439,7 @@
                                                                    
 (define (in-reach? loc)
   (cond
+    [(boolean? loc) false] ; if it doesn't exist, it can't be in reach of anything
     [(posn? loc)(< (sqrt (+ (sqr (posn-x loc)) (sqr (posn-y loc)))) R)]
     [(number? loc)(< loc R)]))
 
@@ -417,10 +455,19 @@
 (define (ufo-render u i)
   (place-image UFO (posn-x u) (posn-y u) i))
 
-; missile, Image -> Image
-; missile-render draws a missile m over an image i
+; Missile, Image -> Image
+; missile-render draws a Missile m over an image i. If Missile is false it returns i.
 
 (define (missile-render m i)
-  (place-image missile (posn-x m) (posn-y m) i))
+  (cond
+    [(posn? m)(place-image MISSILE (posn-x m) (posn-y m) i)]
+    [else i]))
 
-(main sigsstart)
+
+
+(main aimstart)
+
+; WISHLIST
+
+;how would I make a move-thing function that would work for Tank and ufo and MISSILE?
+; find everything that takes a Missile and make sure it takes a MissileOrNot
