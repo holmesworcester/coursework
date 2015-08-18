@@ -85,6 +85,7 @@
 ; examples of Missle:
 
 (define misslestart (make-posn MIDDLE MISSLE-STARTY))
+(define missleupone (make-posn MIDDLE (- MISSLE-STARTY MISSLE-SPEED)))
 (define missleend (make-posn MIDDLE 0)) ; could be nicer than 0 but that's fine for now
 (define misslemid (make-posn MIDDLE (/ HEIGHT 2))) ; a missle halfway through its life.
 (define missle-close-hit (make-posn (+ MIDDLE (/ R 2)) (/ HEIGHT 2))) ; should be a hit, since (/ R 2) is less than R.
@@ -100,6 +101,8 @@
 (define aimufodown1 (make-aim tank-m-0 ufodown1))
 (define aimok (make-aim tank-r-r ufostart))
 (define aimlose (make-aim tank-l-l ufoplanet))
+(define aimhalfway (make-aim tank-l-l ufohalfway))
+
 
 ; Fired is a structure (make-fired tank ufo missle) where tank is a Tank, ufo is a UFO and missle is a Missle.
 ; interpretation: the state of the world once the missle has been fired and is flying through the air.
@@ -107,11 +110,12 @@
 (define-struct fired (tank ufo missle))
 
 (define firedstart (make-fired tank-m-r ufostart misslestart))
+(define firedupone (make-fired tank-m-r ufostart missleupone))
 (define firedmiss (make-fired tank-m-r ufohalfway missleend))
 (define fireddirecthit (make-fired tank-m-r ufohalfway ufohalfway)) ;hit is totally direct (missle and ufo have the same position ufohalfway
-; MAKE ANOTHER EXAMPLE WHERE ITS NOT A DIRECTHIT
 (define firedclosehit (make-fired tank-m-r ufohalfway missle-close-hit))
 (define firedclosemiss (make-fired tank-m-r ufohalfway missle-close-miss))
+(define firedend (make-fired tank-l-l ufohalfway (make-posn MIDDLE -1)))
 
 ; Location is one of:
 ; – Posn
@@ -260,6 +264,10 @@
 ; missle-move moves the missle on a clock tick, down the screen and randomly to the left and right.
 ; if the missle moves off the screen missle-move returns an Aim state.
 
+(check-expect (missle-move firedstart) firedupone)
+(check-expect (missle-move firedend) aimhalfway)
+  
+
 (define (missle-move s)
   (cond
     [(missle-off-screen? s)(make-aim (fired-tank s) (fired-ufo s))] ;for the missle off screen condition
@@ -292,12 +300,12 @@
 ; that is, either when the missle hits the UFO or when the UFO hits ("lands on") the planet.
 
 (check-expect (si-game-over? aimstart) false)
-(check-expect (si-game-over? aimofudown1) false)
+(check-expect (si-game-over? aimufodown1) false)
 (check-expect (si-game-over? aimok) false)
 (check-expect (si-game-over? aimlose) true)
 (check-expect (si-game-over? firedstart) false)
 (check-expect (si-game-over? firedmiss) false)
-(check-expect (si-game-over? firedlose) true)
+(check-expect (si-game-over? firedclosemiss) false)
 (check-expect (si-game-over? firedclosehit) true)
 (check-expect (si-game-over? fireddirecthit) true)
 
