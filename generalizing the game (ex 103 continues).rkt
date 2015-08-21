@@ -244,7 +244,7 @@
 -1 -1 2 1 #"\0"
 0 -1 1 #"\0"
 1.0 0 -1 -1 -1 -1 -1 -1 1 0 0 0 0 0 0 0 0 1.0 1.0 1.0 65 105 225 0 0 0
--1 -1           0 3261 0 4 3 85
+-1 -1           0 3262 0 4 3 85
 (
  #";; The first three lines of this file were inserted by DrRacket. The"
  #"y record metadata"
@@ -254,11 +254,12 @@
  #";; about the language level of this file in a form that our tools ca"
  #"n easily process."
 ) 0 0 4 29 1 #"\n"
-0 0 4 3 176
+0 0 4 3 210
 (
- #"#reader(lib \"htdp-beginner-reader.ss\" \"lang\")((modname |#Ex 103|"
- #") (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t const"
- #"ructor repeating-decimal #f #t none #f ())))"
+ #"#reader(lib \"htdp-beginner-reader.ss\" \"lang\")((modname |#general"
+ #"izing the game (ex 103 continues)|) (read-case-sensitive #t) (teachp"
+ #"acks ()) (htdp-settings #(#t constructor repeating-decimal #f #t non"
+ #"e #f ())))"
 ) 0 0 4 29 1 #"\n"
 0 0 24 3 1 #"("
 0 0 15 3 7 #"require"
@@ -2736,6 +2737,8 @@
 0 0 24 3 5 #"))]))"
 0 0 24 29 1 #"\n"
 0 0 24 29 1 #"\n"
+0 0 24 29 1 #"\n"
+0 0 24 29 1 #"\n"
 0 0 17 3 15 #"; SIGS -> Image"
 0 0 24 29 1 #"\n"
 0 0 17 3 74
@@ -3667,8 +3670,4 @@
  #";how would I make a move-thing function that would work for Tank and"
  #" ufo and MISSILE?"
 ) 0 0 24 29 1 #"\n"
-0 0 17 3 76
-(
- #"; find everything that takes a Missile and make sure it takes a Miss"
- #"ileOrNot"
-) 0           0
+0           0
