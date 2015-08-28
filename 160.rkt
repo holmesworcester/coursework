@@ -143,4 +143,4 @@
 (define (add-balloon p i)
   (place-image BALLOON (posn-x p) (posn-y p) i))
 
-(main 100START)
+(main 1EMPTY)
