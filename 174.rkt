@@ -1,12 +1,12 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-beginner-reader.ss" "lang")((modname |173|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
+#reader(lib "htdp-beginner-reader.ss" "lang")((modname |174|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
 (require 2htdp/batch-io)
 
-; Exercise 173. Design a program that removes all articles from a text file.
-; The program consumes the name n of a file, reads the file, removes the articles,
-; and writes the result out to a file whose name is the result of concatenating "no-articles-" with n.
-; For this exercise, an article is one of the following three words: "a", "an", and "the".
+
+; Exercise 174. Design a program that encodes text files numerically.
+; Each letter in a word;  should be encoded as a numeric three-letter
+; string with a value between 0 and 256. Here is our encoding function for letters:
 
 ; constants
 
@@ -18,6 +18,10 @@
 ; – '()
 ; (cons String List-of-strings)
 ; interpretation: a list of strings.
+
+; A List-of-1strings is a List-of-strings consisting exclusively of 1string's
+; interpretation: one long arbitrary string separated into all its characters
+
 
 ; A LLS is one of:
 ; – '()
@@ -32,57 +36,44 @@
 ; interpretation: a text file where each line is represented by a List-of-strings, and where
 ; each string as the appropriate space or line break attached to it
 
+; functions
 
-; not sure how to write tests
+; String -> F
+; takes in a string s (a filename) and reads that file, and encodes the text numerically in a corresponding file
+; the name of which is the appending of "numeric-" and s.
 
-; (check-expect (no-articles (read-words/line "tt-twolines.txt")) (read-file "no-articles-ttt.txt")) ; one break after first line, none after 2nd
-; (check-expect (no-articles (read-words/line "tt-emptymiddle.txt")) (read-file "tt-emptymiddle.txt")) ; one break, then a space, then another break.
-; (check-expect (no-articles (read-words/line "ttt.txt")) (read-file "ttt.txt")) ; one break, then a space, then another break.
+(define (numeric f)
+   (write-file (string-append "numeric-" f)  (encode (explode (collapse-and-format (read-words/line f))))))
 
+; List-of-1strings -> String
+; encodes a List-of-1strings into a single numeric string using the encoding function code1
 
-(define (no-articles n)
-   (write-file (string-append "no-articles-" n)  (collapse-and-format (remove-articles (read-words/line n)))))
+(check-expect (encode '()) "")
+(check-expect (encode (cons "a" (cons "b" (cons "c" '())))) "097098099")
 
-; Text -> Text
-; removes the articles a, an, and the from text.
-
-(check-expect (remove-articles '()) '())
-(check-expect (remove-articles (cons (cons "yo" '()) '())) (cons (cons "yo" '()) '()))
-(check-expect (remove-articles (cons (cons "the" '()) '())) (cons '() '()))
-(check-expect (remove-articles (cons (cons "a" '()) '())) (cons '() '()))
-(check-expect (remove-articles (cons (cons "an" '()) '())) (cons '() '()))
-(check-expect (remove-articles (cons (cons "yo" (cons "an" '())) '())) (cons (cons "yo" '()) '()))
-
-(define (remove-articles lls)
+(define (encode t)
   (cond
-    [(empty? lls) '()]
-    [else (cons (remove-articles-from-line (first lls)) (remove-articles (rest lls)))]))
+    [(empty? t) ""]
+    [else (string-append (encode-letter (first t)) (encode (rest t)))]))
 
+; 1String -> String
+; converts the given 1string into a three-letter numeric string
 
-; List-of-strings -> List-of-strings
-; removes the articles a, an, and the from a line.
+(check-expect (encode-letter "\t") (string-append "00" (code1 "\t")))
+(check-expect (encode-letter "a") (string-append "0" (code1 "a")))
+(check-expect (encode-letter "z") (code1 "z"))
 
-; tests upstream
-
-(define (remove-articles-from-line ls)
+(define (encode-letter s)
   (cond
-    [(empty? ls) '()]
-    [(article? (first ls)) (remove-articles-from-line (rest ls))]
-    [else (cons (first ls) (remove-articles-from-line (rest ls)))]))
+    [(< (string->int s) 10) (string-append "00" (code1 s))]
+    [(< (string->int s) 100) (string-append "0" (code1 s))]
+    [else (code1 s)]))
 
-; String -> Boolean
-; is it an article (an a the)?
+; 1String -> String
+; converts the given 1string into a numeric string
 
-(check-expect (article? "the") #t)
-(check-expect (article? "a") #t)
-(check-expect (article? "an") #t)
-(check-expect (article? "ufskskdfjh") #f)
-(check-expect (article? "") #f)
-
-(define (article? s)
-  (cond
-    [(or (string=? s "the") (string=? s "a") (string=? s "an")) #t]
-    [else #f]))
+(define (code1 c)
+  (number->string (string->int c)))
 
 ; LLS -> String
 ; turns an LLS into a Text and then a single string.

@@ -7,15 +7,14 @@
 ; (AnyList -> Item-in-list)
 ; returns the list of strings that constitute the (- n 1)th item in the LLS (a line of text, e.g.)
 
-(check-expect (get-item 2 '()) '())
+(check-error (get-item 2 '()) "there aren't that many items in the list")
+(check-error (get-item 5 (cons 1 (cons 2 (cons 3 '())))) "there aren't that many items in the list")
 (check-expect (get-item 0 (cons 1 (cons 2 (cons 3 '())))) 1)
 (check-expect (get-item 2 (cons 1 (cons 2 (cons 3 '())))) 3)
-(check-expect (get-item 5 (cons 1 (cons 2 (cons 3 '())))) '())
-
 
 (define (get-item n l)
   (cond
-    [(empty? l) '()]
+    [(empty? l) (error "there aren't that many items in the list")]
     [(= n 0) (first l)]
     [else (get-item (- n 1) (rest l))]))
 
