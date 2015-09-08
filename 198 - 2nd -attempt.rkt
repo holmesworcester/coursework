@@ -42,9 +42,9 @@
 ; String -> List-of-strings
 ; find all words that the letters of some given word spell
  
-(check-member-of (alternative-words "cat")
-                 (list "act" "cat")
-                 (list "cat" "act"))
+;(check-member-of (alternative-words "cat")
+ ;                (list "act" "cat")
+  ;               (list "cat" "act"))
  
 (check-satisfied (alternative-words "rat") all-words-from-rat?)
  
