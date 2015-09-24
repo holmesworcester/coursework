@@ -151,6 +151,23 @@
   (water-dries-up (water-puts-out-fire (generate-fire fw))))
 
 ; Fworld -> Fworld
+; removes the last water item from the Water list
+
+(define (water-dries-up fw)
+  (make-fworld (fworld-plane fw) (fworld-fire fw) (remove-last (fworld-water fw)) (fworld-time fw)))
+
+; AnyList -> AnyList
+; removes the last segment in the worm (the last item in the list)
+
+(check-expect (remove-last '()) '())
+(check-expect (remove-last (list 1)) '())
+(check-expect (remove-last (list 1 2)) (list 1))
+
+(define (remove-last l)
+  (cond
+    [(empty? l) '()]
+    [(empty? (rest l)) '()]
+    [else (cons (first l) (remove-last (rest l)))]))
 
 ; Fworld -> Fworld
 ; removes a patch of fire whenever it is in reach of a place where water has been dropped.
