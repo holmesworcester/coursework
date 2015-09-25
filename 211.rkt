@@ -3,8 +3,6 @@
 #reader(lib "htdp-beginner-reader.ss" "lang")((modname |211|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
 ; todo
 ; make a way for fire to spread more naturally
-; make a way to win by putting out all fires
-; make a way to run out of water, and to see how much water you have
 
 
 (require 2htdp/image)
@@ -21,12 +19,18 @@
 (define TOTAL-PATCHES 10)
 (define WATER (rectangle (* GRID 1.5) (* GRID 1.5) "solid" "blue"))
 
+(define WATER-LEFT 20)
+(define FIRE-LEFT 2)
+
 (define PLANE-SPEED GRID)
 
 (define LEFT (make-posn (* PLANE-SPEED -1)  0))
 (define RIGHT (make-posn PLANE-SPEED 0))
 (define UP (make-posn 0 (* PLANE-SPEED -1)))
 (define DOWN (make-posn 0 PLANE-SPEED))
+
+(define TEXT-SIZE 14)
+(define TEXT-COLOR "black")
 
 (define R GRID) ; for in-reach? function, defines closeness for water putting out a fire
 
@@ -73,11 +77,11 @@
 ; Fworld is a structure (make-fworld Plane Fire Water Time)
 ; interpretation: the world state of the firefighting game
 
-(define-struct fworld [plane fire water time])
+(define-struct fworld [plane fire water fire-left water-left])
 
-; template: (make-fworld (fworld-plane fw) (fworld-fire fw) (fworld-water fw) (fworld-time fw))
+; template: (make-fworld (fworld-plane fw) (fworld-fire fw) (fworld-water fw) (fworld-fire-left fw) (fworld-water-left fw))
 
-(define start-game (make-fworld start-plane some-fire no-water 0))
+(define start-game (make-fworld start-plane some-fire no-water FIRE-LEFT WATER-LEFT))
 
 ; functions
 
@@ -88,7 +92,42 @@
   (big-bang start-game
             [on-tick tock speed]
             [on-key kh]
-            [to-draw render-fworld]))
+            [to-draw render-fworld]
+            [stop-when game-over? render-game-over]))
+
+; Fworld -> Boolean
+; game-over is when you win or lose
+
+(define (game-over? fw)
+  (or (win? fw) (lose? fw)))
+
+; Fworld -> Boolean
+; win? is true when there are no more fires. otherwise, it returns false
+
+(check-expect (win? start-game) false)
+
+(define (win? fw)
+  (and (<= (fworld-fire-left fw) 0) (empty? (fworld-fire fw))))
+
+; Fworld -> Boolean
+; lose? is true when there is no more water. otherwise, it returns false
+
+(define (lose? fw)
+  (<= (fworld-water-left fw) 0))
+
+; Fworld -> Image
+; render-game-over tells you if you won or lost
+
+(define (render-game-over fw)
+  (cond
+    [(win? fw) (show-message "you win! no more fires!" (render-fworld fw))]
+    [(lose? fw) (show-message "you lose! out of water!" (render-fworld fw))]))
+
+; WorldState, String -> Image
+; renders big messages
+
+(define (show-message t i)
+  (overlay (text t TEXT-SIZE TEXT-COLOR) i))
 
 ; Fworld, KeyEvent -> Fworld
 ; handles all key events, (moving the plane and dropping water)
@@ -108,7 +147,7 @@
 (check-expect (first (fworld-water (drop-water start-game))) (fworld-plane start-game))
 
 (define (drop-water fw)
-  (make-fworld (fworld-plane fw) (fworld-fire fw) (cons (fworld-plane fw) (fworld-water fw)) (fworld-time fw)))
+  (make-fworld (fworld-plane fw) (fworld-fire fw) (cons (fworld-plane fw) (fworld-water fw)) (fworld-fire-left fw) (- (fworld-water-left fw) 1)))
 
 ; Fworld -> Fworld
 ; moves the plane by adding a Posn dir to it
@@ -119,7 +158,7 @@
 (check-expect (posn-y (fworld-plane (move-plane start-game DOWN))) (+ (posn-y start-plane) PLANE-SPEED))
 
 (define (move-plane fw dir)
-  (make-fworld (bounding-box 0 WIDTH 0 HEIGHT (add-posn (fworld-plane fw) dir)) (fworld-fire fw) (fworld-water fw) (fworld-time fw)))
+  (make-fworld (bounding-box 0 WIDTH 0 HEIGHT (add-posn (fworld-plane fw) dir)) (fworld-fire fw) (fworld-water fw) (fworld-fire-left fw) (fworld-water-left fw)))
 
 ; Number, Number, Number, Number, Posn -> Posn
 ; (bounding-box p xmin xmax ymin ymax) keeps 
@@ -160,7 +199,7 @@
 ; removes the last water item from the Water list
 
 (define (water-dries-up fw)
-  (make-fworld (fworld-plane fw) (fworld-fire fw) (remove-last (fworld-water fw)) (fworld-time fw)))
+  (make-fworld (fworld-plane fw) (fworld-fire fw) (remove-last (fworld-water fw)) (fworld-fire-left fw) (fworld-water-left fw)))
 
 ; AnyList -> AnyList
 ; removes the last segment in the worm (the last item in the list)
@@ -181,7 +220,7 @@
 (check-expect (water-puts-out-fire start-game) start-game) ; no water yet
 
 (define (water-puts-out-fire fw)
-  (make-fworld (fworld-plane fw) (eliminate-close-positions (fworld-fire fw) (fworld-water fw)) (fworld-water fw) (fworld-time fw)))
+  (make-fworld (fworld-plane fw) (eliminate-close-positions (fworld-fire fw) (fworld-water fw)) (fworld-water fw) (fworld-fire-left fw) (fworld-water-left fw)))
 
 ; List-of-Positions, List-of-Positions -> List-of-Positions
 ; if any water drop in Water is in-reach of a fire patch, it puts it out, that is it removes it from the list Fire.
@@ -237,10 +276,14 @@
 
 ; Fworld -> Fworld
 ; makes fire until there are TOTAL-PATCHES patches of fire
-; tests downstream
+
+; write more tests here for situations where there are no fires left, and where there are no fire patches in the list, etc
+
 
 (define (generate-fire fw)
-  (make-fworld (fworld-plane fw) (more-fire (fworld-fire fw)) (fworld-water fw) (fworld-time fw)))
+  (cond
+    [(<= (fworld-fire-left fw) 0) fw]
+    [else (make-fworld (fworld-plane fw) (more-fire (fworld-fire fw)) (fworld-water fw) (if (need-more-fire? (fworld-fire fw)) (- (fworld-fire-left fw) 1) (fworld-fire-left fw)) (fworld-water-left fw))])) ; this is ugly but i wanted to reduce the number of fires left without rewriting more-fire.
 
 ; Fire -> Fire
 ; makes more fire patches if there's less than TOTAL-PATCHES patches of fire, otherwise returns the list it's given.
@@ -249,7 +292,13 @@
 (check-expect (more-fire (list 1 2 3 4 5 6 7 8 9 10 11)) (list 1 2 3 4 5 6 7 8 9 10 11)) ; just to check it doesn't add anything if the list is already longer than TOTAL-PATCHES (10)
 
 (define (more-fire lpos)
-  (if (< (length lpos) TOTAL-PATCHES) (cons (random-fire WIDTH HEIGHT) lpos) lpos))
+  (if (need-more-fire? lpos) (cons (random-fire WIDTH HEIGHT) lpos) lpos))
+
+; Fire -> Boolean
+; tells me if I need more fire.
+
+(define (need-more-fire? lpos)
+  (< (length lpos) TOTAL-PATCHES))
 
 ; Number, Number -> Fire
 ; creates a fire at a random position determined by w-max and h-max, the max width and height respectively
