@@ -6,16 +6,19 @@
 ; result for a correct "find" function given that search term and list of items L.
 
 (define (found? search-term list)
-  (lambda (results)
-    (cond
-    [(false? results) (or ; when is it right for found to return false? either...
-                  (empty? list) ; when l1 is empty or...
-                  (not (member? search-term list)))] ; when x isn't a member of l1.
+  (cond
+    [(empty? list) false?] ; return the function "false?" if the list is empty, because that's all we have to check.
     [else
-     (and ; when is results really a find from list given search-term? when alll of these are true:
-      (>= (length list) (length results)) ; results is the smaller one, or they're both the same size.
-      (match-up? (reverse results) (reverse list)) ; their last items are equal, up to the length of the smaller.
-      (not (member? search-term (foldr remove list results))))]))) ; makes sure x does not exist outside the tail.
+     (lambda (results)
+       (cond
+         [(false? results) (or ; when is it right for found to return false? either...
+                            (empty? list) ; when l1 is empty or...
+                            (not (member? search-term list)))] ; when x isn't a member of l1.
+         [else
+          (and ; when is results really a find from list given search-term? when alll of these are true:
+           (>= (length list) (length results)) ; results is the smaller one, or they're both the same size.
+           (match-up? (reverse results) (reverse list)) ; their last items are equal, up to the length of the smaller.
+           (not (member? search-term (foldr remove list results))))]))])) ; makes sure x does not exist outside the tail.
 
 ; X [List-of X] -> [Maybe [List-of X]]
 ; produces the first sublist of l that starts with x, #false otherwise
@@ -45,3 +48,4 @@
 
 (check-satisfied (find 10 (list 2 5 23 12 52345 5443 10 23 23 23 5 4526645 232)) (found? 10 (list 2 5 23 12 52345 5443 10 23 23 23 5 4526645 232)))
 (check-satisfied (find 999999 (list 2 5 23 12 52345 5443 10 23 23 23 5 4526645 232)) (found? 999999 (list 2 5 23 12 52345 5443 10 23 23 23 5 4526645 232)))
+(check-satisfied (find 10 '()) (found? 10 '()))
