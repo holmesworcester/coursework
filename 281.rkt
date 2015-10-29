@@ -16,9 +16,9 @@
 ; takes in a list and an item, and returns a function of one argument that take in the results of an index function
 ; (a number or false) to see if the result is correct. if it is, returns boolean. if not, returns false.
 
+
 (define (is-index? search-term list)
   (cond
-    [(empty? list) false?] ; return the function "false?" if the list is empty, because that's all we have to check.
     [(not (member? search-term list)) false?] ; if the search-term isn't in the list, it's always going to be false.
     [else
      (lambda (index-or-f)
