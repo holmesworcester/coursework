@@ -1,6 +1,6 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |297|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
+#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |298|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
 
 (define-struct no-parent [])
 (define MTFT (make-no-parent))
@@ -22,6 +22,20 @@
  
 ; Youngest Generation: 
 (define Gustav (make-child Fred Eva "Gustav" 1988 "brown"))
+
+; FT -> (List-of String)
+; consumes a family tree node and produces a list of all eye colors in the tree.
+; An eye color may occur more than once in the resulting list.
+
+(check-expect (eye-colors Fred) (list "pink"))
+(check-expect (length (eye-colors Gustav)) 5)
+
+(define (eye-colors a-ftree)
+  (cond
+    [(no-parent? a-ftree) '()]
+    [else (append (list (child-eyes a-ftree)) (eye-colors (child-father a-ftree)) (eye-colors (child-mother a-ftree)))]))
+
+(eye-colors Gustav)
 
 ; FT, N -> N
 ; consumes a family tree node and the current year. It produces the average age of all child structures in the family tree.

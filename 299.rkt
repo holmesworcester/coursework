@@ -1,6 +1,6 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |297|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
+#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |299|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
 
 (define-struct no-parent [])
 (define MTFT (make-no-parent))
@@ -22,6 +22,42 @@
  
 ; Youngest Generation: 
 (define Gustav (make-child Fred Eva "Gustav" 1988 "brown"))
+
+; FT -> Boolean
+; returns true if one of the parents of a given node, or their parents and so on, have blue eyes.
+; returns false otherwise, and returns false if that given node has blue eyes.
+
+(check-expect (blue-eyed-ancestor? Carl) #f)
+(check-expect (blue-eyed-ancestor? Gustav) #t)
+(check-expect (blue-eyed-ancestor? Eva) #f)
+               
+(define (blue-eyed-ancestor? ft)
+    (cond
+      [(no-parent? ft) #f]
+      [else (or (has-blue-eyes? (child-mother ft)) (blue-eyed-ancestor? (child-mother ft)) (has-blue-eyes? (child-father ft)) (blue-eyed-ancestor? (child-father ft)))])) ; either parent has blue eyes, or a blue eyed ancesotor, return true.
+
+; FT -> Boolean
+; returns true if the FT has blue eyes. Otherwise returns false.
+
+(check-expect (has-blue-eyes? Eva) #t)
+(check-expect (has-blue-eyes? Gustav) #f)
+
+(define (has-blue-eyes? ft)
+  (cond
+    [(no-parent? ft) #false]
+    [else (string=? "blue" (child-eyes ft))]))
+
+; FT -> (List-of String)
+; consumes a family tree node and produces a list of all eye colors in the tree.
+; An eye color may occur more than once in the resulting list.
+
+(check-expect (eye-colors Fred) (list "pink"))
+(check-expect (length (eye-colors Gustav)) 5)
+
+(define (eye-colors a-ftree)
+  (cond
+    [(no-parent? a-ftree) '()]
+    [else (append (list (child-eyes a-ftree)) (eye-colors (child-father a-ftree)) (eye-colors (child-mother a-ftree)))]))
 
 ; FT, N -> N
 ; consumes a family tree node and the current year. It produces the average age of all child structures in the family tree.
