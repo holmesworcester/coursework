@@ -42,7 +42,20 @@
 (define (average-age-forest ff year)
   (- year (average (list-from-forest child-date ff))))
 
-;  (average (list-from-forest (... ? lambda (n) (- year (child-date n))))))
+; TODO: Try reimplementing `average-age` by using your `list-from-forest` function, and a local helper function you will write called `child-age`
+
+; [List-of FT], N -> N
+; returns the average age for all members of a FF, assuming we don't have to worry about overlap.
+
+(check-expect (average-age-forest.v2 ff1 1926) 0)
+
+(define (average-age-forest.v2 ff year)
+  (local (; Number, Structure -> Number
+          ; consumes a structure (make-child father mother name date eyes) and returns the approximate age of the child given the current year.
+          (define (child-age c)
+            (- year (child-date c))))
+    ; -IN-         
+  (average (list-from-forest child-age ff)))) 
 
 ; [List-of N] -> N
 ; gives me the average of a list.
