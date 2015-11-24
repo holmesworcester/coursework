@@ -82,7 +82,6 @@
     [(empty? ff) '()]
     [else (append (list-from-ft (first ff)) (list-from-forest selector (rest ff)))])))
 
-
 ; FT -> Boolean
 ; returns true if one of the parents of a given node, or their parents and so on, have blue eyes.
 ; returns false otherwise, and returns false if that given node has blue eyes.
@@ -131,6 +130,20 @@
     [(no-parent? ft) 0]  
     [else (+ (- year-now (child-date ft)) (total-age (child-father ft)) (total-age (child-mother ft)))])))
     (/ (total-age a-ftree) (count-persons a-ftree))))
+
+; FT, N -> N
+; consumes a family tree node and the current year. It produces the average age of all child structures in the family tree.
+
+(check-expect (average-age.v2 Gustav 2000) (/ (+ (- 2000 1926) (- 2000 1926) (- 2000 1965) (- 2000 1966) (- 2000 1988)) 5))
+(check-expect (average-age.v2 Fred 2000) (- 2000 1966))
+
+(define (average-age.v2 a-ftree year)
+  (local (; Number, Structure -> Number
+          ; consumes a structure (make-child father mother name date eyes) and returns the approximate age of the child given the current year.
+          (define (child-age c)
+            (- year (child-date c))))
+    ;-IN-
+    (average (list-from-forest child-age (list a-ftree))))) ; (list (a-ftree)) lets me use list from forest.
   
 ; FT -> N
 ; consumes a family tree node and counts the child structures in the tree.
