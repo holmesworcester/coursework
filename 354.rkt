@@ -90,24 +90,34 @@
 
 (check-expect (xexpr-content e0) '())
 (check-expect (xexpr-content e1) '())
-(check-expect (xexpr-content e2) '(action))
-; (check-expect (xexpr-content e3) '(action)) <-- suspicious of this one.
+(check-expect (xexpr-content e2) '((action)))
+(check-expect (xexpr-content e3) '((action))) 
 (check-expect (xexpr-content e4) '((action)(action)))
-(check-satisfied e0 xexpr-works?)
-(check-satisfied e1 xexpr-works?)
-(check-satisfied e2 xexpr-works?)
-(check-satisfied e3 xexpr-works?)
-(check-satisfied e4 xexpr-works?)
+
+; An Xexpr.v2 is 
+; – (cons Symbol [List-of Xexpr.v2])
+; – (cons Symbol (cons [List-of Attribute] [List-of Xexpr.v2]))
 
 (define (xexpr-content xe)
   (cond
-    [(empty? (rest xe)) '()]
-    [(empty? (remove-attributes xe)) '()]
-    [(empty? (rest (remove-attributes xe))) '()]; is this putting in a list unecessarily?
-    [else (rest (rest (remove-attributes xe)))])) ; ... added rest here.. take out the attributes, then take out the name.
+    [(empty? (rest xe)) '()] ; because first doesn't like empty.
+    [(list-of-attributes? (first (rest xe))) (rest (rest xe))] ; if there's an attribute return (rest (rest xe)) that is, List-of Xexpr.v2 in my definition.
+    [else (rest xe)])) ; if the first is an xexpr and not a list of attributes, return that.
+
+; Xexpr.v2 -> Xexpr.v2
+; takes apart and Xexpr.v2 and puts it back together again.
+
+(check-expect (reconstruct e0) e0)
+(check-expect (reconstruct e1) e1)
+(check-expect (reconstruct e2) e2)
+(check-expect (reconstruct e3) e3)
+(check-expect (reconstruct e4) e4)
+
+(define (reconstruct xe)
+  (cons (xexpr-name xe) (cons (xexpr-attributes xe) (xexpr-content xe))))
 
 ; Xexpr.v2 -> Boolean
 ; for testing Xexpr.v2 name & content functions reliably
 
 (define (xexpr-works? xe)
-  (eq? xe `(,(xexpr-name xe) ,(xexpr-attributes xe) ,(xexpr-content xe)))) ; if this is failing there's something deeper i might not understand. maybe my data definition is wrong.
+  (eq? xe (reconstruct xe))) ; if this is failing there's something deeper i might not understand. maybe my data definition is wrong.
