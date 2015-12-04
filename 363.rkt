@@ -1,6 +1,6 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |363|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f () #f)))
+#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |363|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
 (require 2htdp/image)
 
 ; constants
@@ -109,7 +109,7 @@
 (define (count-hellos an-enum)
   (local (; pull out the content and ignore the attributes
           (define content (xexpr-content an-enum))
-          ; XItem.v2, Number -> Number
+          ; XItem.v2, Number -> Number 
           (define (tally-hellos item n)
             (local (; pull out the thing that is either the word or the enum
                     ; this isn't a function, but the move I'm doing here is XItem.v2 -> Word OR XEnum.v2
@@ -128,7 +128,7 @@
 (check-expect (ishello? '(word ((text "nothello")))) #f)
 
 (define (ishello? w)
-  (eq? w hello))
+  (equal? w hello))
 
 
 ; XItem.v2 -> Image
