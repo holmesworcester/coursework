@@ -18,8 +18,9 @@ http.get(url3, getAndCount)
 // increments the number of callbacks each time, only once all data is collected. 
 function getAndCount (response) {
      response.pipe(bl(function (err, data) {
-           urlsCompleted = urlsCompleted + 1; // increments
-           			return data.toString;
+           urlsCompleted = urlsCompleted + 1;
+           console.log('one done!') // increments
+           			return data.toString; // now I think something else is going wrong and the callback functions aren't even happening.
  		}
 	))
 } 
