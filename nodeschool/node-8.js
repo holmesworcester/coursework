@@ -1,20 +1,38 @@
 var http = require('http')
-var bl = require('bl')
+var _ = require('underscore')
+
 const url1 = process.argv[2]
 const url2 = process.argv[3]
 const url3 = process.argv[4]
 
 const urls = [url1, url2, url3]
-const i = -1 // url index
 
-// Consumes a response I can pass it as a callback to httpGet.
+// takes in a URL and calls the function callbackforOne on the response
+// given by httpget, which is data.
+// now I just don't know how to get the output into the right format.
 
-doAllRemainingURLs('starting this off!')
-
-function doAllRemainingURLs (response) {
-	console.log(response)
-//	response.on("data", console.log).setEncoding('utf8')
-	i = i + 1;
-	if (i < 3) http.get(urls[i], doAllRemainingURLs)
+function doOneURL(url, callbackforOne) {
+	http.get(url, function callback(response) {
+	response.on("data", callbackforOne).setEncoding('utf8')})
 }
 
+// List-of-URLs -> Data
+
+function doListofURLs(urlList, next) {
+	if (_.isEmpty(urlList)) next([])
+		// then we are done and I should return no data.
+		// the way I return things is with the callback.
+		else 
+		// there is more data to do
+		// I should process the first item of urlList qith doOneURL
+		// and compose it with a recursive use of the doListofURLs function.
+		// remember I am "returning" things with a callback
+		doOneURL(_.first(urlList), function (responseFirst) {
+			doListofURLs(_.rest(urlList), function (responseRest) {
+				next([responseFirst].concat(responseRest))
+			})
+		})
+	}
+
+doListofURLs(urls, function (rest) {
+	console.log(rest)})
