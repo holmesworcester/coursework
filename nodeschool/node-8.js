@@ -24,7 +24,7 @@ function doOneURLasOneLineString(url, callbackforOne) {
 // List-of-URLs -> Data
 
 function doListofURLs(urlList, next) {
-	if (_.isEmpty(urlList)) next([])
+	if (_.isEmpty(urlList)) next([]) // this is the line I don't really understand. 
 		// then we are done and I should return no data.
 		// the way I return things is with the callback.
 		else 
