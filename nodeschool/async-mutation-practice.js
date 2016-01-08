@@ -1,4 +1,5 @@
 // a function that multiplies every number in a list by 2, async style.
+var http = require('http')
 var _ = require('underscore')
 var aList = [1, 2, 3, 4]
 
@@ -60,45 +61,49 @@ function times2MutationAsync (lon, callback) {
 	callback(lon)
 }
 
-// Number, Number, [Number -> X] -> []
-// multiples two numbers together and calls callback on the result
+// Make an abstract map function that works this way.
 
-function timesAsync (n1, n2, callback) {
-	callback(n1 * n2)
+// [List-of X], [X, [Y -> []]]] -> []], Y]   --- woh is this right??
+// a map function that works asynchronously and takes in an async function. 
+
+function asyncMap (list, async1ParamFunc, callback) {
+		var callbackCount = 0
+		for (i=0; i < list.length; i++) async1ParamFunc (list[i], function (result) {
+				list[i] = result
+				callbackCount ++
+			});
+		do 
+		{} 
+		while (callbackCount < list.length) // is there a less stupid way to wait for callbacks to complete?
+	callback(list)
 }
 
-// this is vanilla.
 
-console.log(multiplyAllMutation([1,2,3,4]))
-console.log(times2MutationSafeTake2([1,2,3,4]))
-console.log(times2Mutation([1,2,3,4]))
-console.log(times2MutationSafe([1,2,3,4]))
-
-times2MutationAsync([1,2,3,4], console.log)
-
-// this shows some interesting behavior
-
-console.log(multiplyAllMutation(aList))
-console.log(times2MutationSafeTake2(aList))
-console.log(times2Mutation(aList))
-console.log(times2MutationSafe(aList))
-
-// this shows some more interesting behavior. one reason why writing tests is more complicated than it seemed to me initially.
-
-if (times2MutationSafeTake2(aList) == [2, 4, 6, 8]) console.log("times2MutationSafeTake2 works: [2, 4, 6, 8]") 
-	else console.log("times2MutationSafeTake2 is broken: " + times2MutationSafeTake2(aList)) // will this be better?  NOPE!!
-
-if (multiplyAllMutation(aList) == 24) console.log("multiplyAllMutation works: 24") 
-	else console.log("multiplyAllMutation is broken: " + multiplyAllMutation(aList))
-
-console.log(times2Mutation(aList))
-
-if (times2Mutation(aList) == [2, 4, 6, 8]) console.log("times2Mutation works: [2, 4, 6, 8]") 
-	else console.log("times2Mutation is broken: " + times2Mutation(aList)) // what happens here is so fucked up. i get it, but it's so fucked up :) good lesson in mutation!!
-
-if (times2MutationSafe(aList) == [2, 4, 6, 8]) console.log("times2MutationSafe works: [2, 4, 6, 8]") 
-	else console.log("times2MutationSafe is broken: " + times2MutationSafe(aList)) // will this be better?  NOPE!!
+function times2FromMap (lon, callback) {
+	// consumes a number and a callback, runs the callback on the number times 2.
+	function times2Async (number, timescallback) {
+		timesAsync (number, 2, timescallback)
+	} 
+	// in
+	asyncMap (lon, times2Async, callback)
+}
 
 
+// Number, Number, [Number -> X] -> []
+// multiples two numbers together and calls callback on the result
+// If the first number is odd, it does unnecessary activity to simulate a function where there were actually strange delays and tasks completed out of order.
+
+function timesAsync (n1, n2, callback) {
+	if (n1 % 2) {
+		for (j=0; j < n1 * 10000; j++) {
+		console.log(".")}
+		callback(n1 * n2)
+	} else {
+		callback(n1 * n2)
+	}
+}
 
 
+// times2MutationAsync([1,2,3,4], console.log)
+times2FromMap([1,2,3,4], console.log)
+// asyncMap (["http://twitter.com/", "http://google.com"], http.get, console.log)
