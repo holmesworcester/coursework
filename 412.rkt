@@ -4,6 +4,8 @@
 (define (solve x) x)
 (define (combine-solutions x y) y)
 
+; take this template...
+
 (define (special P)
   (cond
     [(empty? P) (solve P)]

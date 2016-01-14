@@ -1,0 +1,82 @@
+;; The first three lines of this file were inserted by DrRacket. They record metadata
+;; about the language level of this file in a form that our tools can easily process.
+#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |425|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
+; Q. How many re-computations of (f left) does this design maximally avoid?
+; A. If the right margin is within TOLERANCE just on the other side of the root, this refactoring
+; with a local function that consumes f-left from the main function will mean that f-left is only
+; evaluated once, at the beginning and never again. so it could save a number of recomputations
+; equal to the number of steps the program has to go through to find the answer minus 1.
+
+(define TOLERANCE 0.001)
+
+; Number -> Number
+(define (poly x)
+  (* (- x 2) (- x 4)))
+
+; Number -> Number
+; a function that is monotonically increasing
+(define (monotonic x)
+  (- (expt 2 x) 16)) ; root at 4
+
+; [Number -> Number] Number Number -> Number
+; determines R such that f has a root in [R,(+ R TOLERANCE)]
+; assume f is continuous AND MONOTONIC
+; assume (or (<= (f left) 0 (f right)) (<= (f right) 0 (f left)))
+; generative divide interval in half, the root is in one of the two
+; halves, pick according to assumption
+; termination argument: it will terminate because we know the line crosses zero and each step brings right and left closer together and when they're within TOLERANCE it terminates. 
+
+(check-within TOLERANCE (find-root-monotonic monotonic 1 8) 4)
+(check-within TOLERANCE (find-root-monotonic monotonic -100 100) 4)
+
+(define (find-root-monotonic f left right)
+  (local (; [Number -> Number] Number Number Number Number -> Number
+          ; consumes a left margin, a right margin, and the values of the function at those margins, and returns an approximation of the root of the function f (which it takes as a constant)
+          (define (find-root-faster left right f@left f@right)
+            (cond    
+              [(<= (- right left) TOLERANCE) left]
+              [else
+               (local (; evaluate everything I know I need just once, up front.
+                       ; define mid and f(mid) which is the only thing i need to recalculate each time. 
+                       (define mid (/ (+ left right) 2))
+                       (define f@mid (f mid)))
+                 ;-IN-
+                 (cond
+                   [(<= f@left 0 f@mid)
+                    (find-root-faster left mid f@left f@mid)]
+                   [else
+                    (find-root-faster mid right f@mid f@right)]))])))
+    ;-IN-
+    (find-root-faster left right (f left) (f right))))
+
+
+; [Number -> Number] Number Number -> Number
+; determines R such that f has a root in [R,(+ R TOLERANCE)]
+; assume f is continuous 
+; assume (or (<= (f left) 0 (f right)) (<= (f right) 0 (f left)))
+; generative divide interval in half, the root is in one of the two
+; halves, pick according to assumption
+; termination argument: it will terminate because we know the line crosses zero and each step brings right and left closer together and when they're within TOLERANCE it terminates. 
+
+(check-within TOLERANCE (find-root poly 1 3) 2)
+(check-within TOLERANCE (find-root poly 3 100) 4)
+
+(define (find-root f left right)
+  (local (; [Number -> Number] Number Number Number Number -> Number
+          ; consumes a left margin, a right margin, and the values of the function at those margins, and returns an approximation of the root of the function f (which it takes as a constant)
+          (define (find-root-faster left right f@left f@right)
+            (cond    
+              [(<= (- right left) TOLERANCE) left]
+              [else
+               (local (; evaluate everything I know I need just once, up front.
+                       ; define mid and f(mid) which is the only thing i need to recalculate each time. 
+                       (define mid (/ (+ left right) 2))
+                       (define f@mid (f mid)))
+                 ;-IN-
+                 (cond
+                   [(or (<= f@left 0 f@mid) (<= f@mid 0 f@left))
+                    (find-root-faster left mid f@left f@mid)]
+                   [(or (<= f@mid 0 f@right) (<= f@right 0 f@mid))
+                    (find-root-faster mid right f@mid f@right)]))])))
+    ;-IN-
+    (find-root-faster left right (f left) (f right))))
