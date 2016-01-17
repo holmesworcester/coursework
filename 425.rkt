@@ -1,11 +1,7 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
 #reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |425|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
-; Q. How many re-computations of (f left) does this design maximally avoid?
-; A. If the right margin is within TOLERANCE just on the other side of the root, this refactoring
-; with a local function that consumes f-left from the main function will mean that f-left is only
-; evaluated once, at the beginning and never again. so it could save a number of recomputations
-; equal to the number of steps the program has to go through to find the answer minus 1.
+; I'm not sure if I can simplify the monotonic one more.
 
 (define TOLERANCE 0.001)
 
