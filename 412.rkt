@@ -88,3 +88,32 @@
                 [else s1]))))
     ;-IN-
     (implode (map cap-1s (explode s)))))
+
+
+; String -> String
+; lowercases a string
+
+(define (lc-string s)
+  (local (; the int for "a"
+          (define a (string->int "a"))
+          ; the int for "z"
+          (define z (string->int "z"))
+          ; the int for "A"
+          (define A (string->int "A"))
+          ; define the magic conversion number from cap to lowercase as a constant
+          (define magic-conversion-number (- a A))
+          ;1String -> 1String
+          ;capitalizes a 1String if it is a lowercase letter or leaves it alone otherwise
+          (define (lc-1s s1)
+            (local (; the int for the string we're looking at (to avoid repitition)
+                    (define sint (string->int s1))
+                    ; 1String -> Boolean
+                    ; returns true if a lowercase letter
+                    (define s1-upppercase?
+                      (<= A sint Z)))
+              ; -IN-
+              (cond
+                [s1-upppercase? (int->string (+ sint magic-conversion-number))] ; if uppercase then lowercase it.
+                [else s1]))))
+    ;-IN-
+    (implode (map cap-1s (explode s)))))
