@@ -48,6 +48,15 @@
 ; (Hint: Traverse the structure, maintaining an auxiliary data structure
 ; that is used to keep track of which pairs have already been counted.)
 
+(define (last-pair x)
+  (if (null? (cdr x))
+      x
+      (last-pair (cdr x))))
+
+(define (append! x y)
+  (set-cdr! (last-pair x) y)
+  x)
+
 (define (get-new-pair) '(() ()))
 
 ; X, [List-of X] -> Boolean
@@ -70,15 +79,16 @@
 ; Okay, I get why it's not working. It's because I'm just passing it down each branch. I need to use mutation to store a global list.
 
 (define (pairs p)
-  (let ((list-of-counted-pairs (get-new-pair)))
+  (let ((list-of-counted-pairs '()))
     (define (pair-counter p)
       (let ((zero-if-duplicate-else-1
              (cond
                [(not (pair? p)) 0] ; makes it zero so that we don't get an error if it's empty
-               [(member? (list (car p) (cdr p)) list-of-counted-pairs) 0]
+               [(null? list-of-counted-pairs) 1] ; makes sure my list of counted isn't empty
+               [(member? (list p) list-of-counted-pairs) 0]
                [else 1]))) ; only counts it if it's not already counted.
         ;-IN-
-        (if (pair? p) (set-cdr! list-of-counted-pairs (list (list (car p) (cdr p))))) ; I've already checked, so I can update the list. Needs to make sure it's a pair first.
+        (if (pair? p) (append! (list p) list-of-counted-pairs)) ; I've already checked, so I can update the list. Needs to make sure it's a pair first.
         (cond
           [(not (pair? p)) 0]
           [else (+ (pairs (car p))
