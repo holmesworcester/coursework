@@ -48,6 +48,8 @@
 ; (Hint: Traverse the structure, maintaining an auxiliary data structure
 ; that is used to keep track of which pairs have already been counted.)
 
+(define (get-new-pair) '(() ()))
+
 ; X, [List-of X] -> Boolean
 ; tells me if a thing is a member of a list, using the comparison eq? 
 
@@ -67,19 +69,26 @@
 
 ; Okay, I get why it's not working. It's because I'm just passing it down each branch. I need to use mutation to store a global list.
 
-(define (pairs p lop)
-    (cond
-      [(not (pair? p)) 0]
-      [else (let ((current-pair (list (car p)(cdr p)))
-                  (new-lop (cons (list (car p)(cdr p)) lop)) ; scheme wouldn't let me define new-lop in terms of current-pair, why not?
-                  (count-if-not-counted-yet (if (member? (list (car p)(cdr p)) lop) 0 1)))
-              ;-IN-
-              (+ (pairs (car p) new-lop)
-                 (pairs (cdr p) new-lop)
-                 count-if-not-counted-yet))]))
+(define (pairs p)
+  (let ((list-of-counted-pairs (get-new-pair)))
+    (define (pair-counter p)
+      (let ((zero-if-duplicate-else-1
+             (cond
+               [(not (pair? p)) 0] ; makes it zero so that we don't get an error if it's empty
+               [(member? (list (car p) (cdr p)) list-of-counted-pairs) 0]
+               [else 1]))) ; only counts it if it's not already counted.
+        ;-IN-
+        (if (pair? p) (set-cdr! list-of-counted-pairs (list (list (car p) (cdr p))))) ; I've already checked, so I can update the list. Needs to make sure it's a pair first.
+        (cond
+          [(not (pair? p)) 0]
+          [else (+ (pairs (car p))
+                   (pairs (cdr p))
+                   zero-if-duplicate-else-1)])))
+    ;-IN-
+    (pair-counter p)))
 
-(check-expect (pairs 7pair '()) 3)
-(check-expect (pairs returns4 '()) 3)
-(check-expect (pairs (list 1 2 3) '()) 3)
-(check-expect (pairs 3-pair-of-no-return '()) 3)
+(check-expect (pairs 7pair) 3)
+(check-expect (pairs returns4) 3)
+(check-expect (pairs (list 1 2 3)) 3)
+(check-expect (pairs 3-pair-of-no-return) 3)
 
