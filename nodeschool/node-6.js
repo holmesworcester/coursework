@@ -6,6 +6,8 @@ http.get(url, callback)
 function callback(response){
 	response.on("data", console.log).setEncoding('utf8')
 }
+
+
    
  // interest are: "data", "error" and "end". You listen to an event like so:  
    
