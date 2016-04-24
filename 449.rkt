@@ -85,7 +85,7 @@
 (check-expect (test-on-all-nodes sample-graph) #f)
 (check-expect (test-on-all-nodes '((A B)
                                    (B A))) #t)
-; (check-expect (test-on-all-nodes cyclic-graph) #f)
+(check-expect (test-on-all-nodes cyclic-graph) #f)
 
 (define (test-on-all-nodes G)
   (local (; Graph -> [List-of Node]
