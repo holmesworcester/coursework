@@ -1,6 +1,8 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
 #reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |449|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
+ (require racket/match)
+
 ; A Node is a Symbol
 
 ; A Path is [List-of Node]
@@ -53,24 +55,29 @@
 (check-expect (find-path 'C 'G sample-graph) #false)
 
 (define (find-path origination destination G)
-  (cond
-    [(symbol=? origination destination) (list destination)]
-    [else                
-     (cond
-       [(boolean? (find-path/list (neighbors origination G) destination G)) #false]
-       [else (cons origination (find-path/list (neighbors origination G) destination G))])]))
+  (local (; [List-of Node] -> [Maybe Path]
+          ; finds a path from some node on lo-Os to D
+          ; if there is no path, the function produces #false
+          (define (find-path/list lo-Os)
+            (local (; Node [Maybe Path] -> [Maybe Path]
+                    ; Consumes a Node an a [Maybe Path] MP. If [Maybe Path] is not false, returns that. Otherwise, returns (find-path node).
+                    (define (combine node maybe-path)
+                      (if (not (boolean? maybe-path)) maybe-path (find-path node destination G))))
+                    ;-IN-
+              (foldr combine #f lo-Os)))         
+          ; Node, Graph -> [List-of Node]
+          ; consumes a Node n and a Graph g and produces the list of immediate neighbors of n in g.
+          (define (neighbors node G)
+            (rest (first (filter (lambda (lon) (symbol=? node (first lon))) G))))) ; builds a list of all matches, takes the first match (there is always at least one if the node is in the graph) and returns rest (all the neighbors)
+    ;-IN-
+    (cond
+      [(symbol=? origination destination) (list destination)]
+      [else (local ((define next (neighbors origination G))
+                    (define candidate (find-path/list next)))
+              (cond
+                [(boolean? candidate) #false]
+                [else (cons origination candidate)]))])))
  
-; [List-of Node] Node Graph -> [Maybe Path]
-; finds a path from some node on lo-Os to D
-; if there is no path, the function produces #false
-(define (find-path/list lo-Os D G)
-  (cond
-    [(empty? lo-Os) #false]
-    [else (local ((define candidate (find-path (first lo-Os) D G)))
-            (cond
-              [(boolean? candidate) (find-path/list (rest lo-Os) D G)]
-              [else candidate]))]))
-
 ; Graph -> Boolean
 ; consumes a graph g and tries to find a path find-path between all pairs of nodes in g.
 ; If it succeeds, it produces #true.
