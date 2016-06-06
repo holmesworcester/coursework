@@ -17,6 +17,8 @@
 (check-expect (threatening? (make-posn 1 0) (make-posn 0 0)) #t)
 (check-expect (threatening? (make-posn 4 4) (make-posn 5 5)) #t)
 (check-expect (threatening? (make-posn 0 0) (make-posn 1 3)) #f)
+(check-expect (threatening? (make-posn 5 5) (make-posn 9 1)) #t)
+
 
 (define (threatening? q1 q2)
   (local (; useful constants
@@ -28,5 +30,6 @@
     (cond
       [(equal? q1y q2y) #t] ; same row
       [(equal? q1x q2x) #t] ; same column
-      [(equal? (- q1x q2x) (- q1y q2y)) #t] ; same diagonal
+      [(equal? (- q1x q2x) (- q1y q2y)) #t] ; same down-right diagonal
+      [(equal? (+ q1x q1y) (+ q2x q2y)) #t] ; same down-left diagonal
       [else #f])))
