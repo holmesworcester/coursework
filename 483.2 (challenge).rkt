@@ -1,6 +1,6 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |456|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
+#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |483.2 (challenge)|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
 (require 2htdp/image)
 
 (define QUEENS 8)
@@ -168,8 +168,8 @@
 
 (check-expect ((n-queens-solution? 4) (place-queens (board0 4) 4)) #t)
 (check-expect ((n-queens-solution? 5) (place-queens (board0 5) 5)) #t)
-; (check-expect ((n-queens-solution? 2) (place-queens (board0 2) 2)) #f)
-
+(check-expect (place-queens (board0 2) 2) #f)
+(check-expect (place-queens (board0 3) 3) #f)
 
 (define (place-queens board n)
   (cond
@@ -180,18 +180,22 @@
               (define successful-tries
                 (filter (lambda (result) (not (false? result))) (map (lambda (open-spot) (place-queens (add-queen board open-spot) (- n 1))) (find-open-spots board))))) ; try every open spot, return the first true.
         ;-IN-
-        (if (cons? successful-tries) (first successful-tries) #false))])) ; if there are successful tries, return them.
+        (if (cons? successful-tries) (first successful-tries) #false))])) ; if there are successful tries, return one of them.
 
 ; IMPORTANT: I think this gets easier if the definition of board includes two LQP's: possible positions and used positions.
 ; That way, if place-queens returns false on a board with a queen placed in a certain position,
 ; you call the function on a new board with that position removed as a possibility, even though it's not occupied by a queen.
 ; that way the function keeps throwing out paths that fail while recursively generating sets of LQP's that work.
 
-; Data definition of board.
-; A Board is a structure [List-of QP], [List-of QP]
-(define-struct board (queens spots))
-; interpretation: Queens is the LQP describing where queens have been placed. Spots is the LQP describing spaces
-; on the board that are neither open nor unthreatened by a queen.
+; NEW (AGAIN!) Data definition of board.
+
+; A Square is a structure N, N, Boolean
+; intepretation, a Square on a chessboard, the x coordinate, the y coordinate, whether the square is threatened
+(define-struct squarey (x y threatened?))
+
+; A Board is a structure [List-of QP] [List-of Square]
+; interpretation: a list of queens on the board, and a list of empty spots on a board, threatened and not.
+(define-struct board (queens squares))
 
 ; Board -> [List-of QP]]
 ; returns the list of QP's of a given board
@@ -200,41 +204,35 @@
 
 ; N -> Board 
 ; creates the initial n by n board
-
-(check-expect (board0 2) (make-board '() (list (make-posn 0 0) (make-posn 1 0) (make-posn 0 1) (make-posn 1 1))))
-
 (define (board0 n)
-  (local (; N -> [List of QP]
-          (define (all-posn n)
-            (foldr append '() (build-list n (lambda (y) (build-list n (lambda (x) (make-posn x y))))))))
+  (local (; N -> [List of Square]
+          (define (all-squares n)
+            (foldr append '() (build-list n (lambda (y) (build-list n (lambda (x) (make-squarey x y #f))))))))
     ;-IN-
-    (make-board '() (all-posn n))))
+    (make-board '() (all-squares n))))
 
 ; Board QP -> Board 
 ; places a queen at qp on a-board
 ; must update list of queens but also remove her new spot and all threatened spots from available.
 
-(check-expect (add-queen (board0 2) (make-posn 0 0)) (make-board (list (make-posn 0 0)) '())) 
-
 (define (add-queen a-board qp)
-  (local (; [List-of QP] -> [List-of QP]
-          ; removes the new QP and all new threatened QP's from a [List-of QP]
-          (define (remove-unavailable lqp)
-            (local (; QP -> Boolean
-                    ; checks to see if it's still an available spot, that is, 
-                    ; not threatened by the new QP, and not the same as the new QP
-                    (define (still-available? a-qp)
-                      (and (not (threatening? qp a-qp)) ; available qp isn't threatened by the new queen.
-                           (not (equal? qp a-qp))))) ; available qp isn't the same as the new qp.
-              ;-IN-
-            (filter still-available? lqp))))
-    (make-board
-     (cons qp (board-queens a-board)) ; add queen to the list of queens
-     (remove-unavailable (board-spots a-board))))) ; remove newly unavailable from the list of spots
+  (local (; QP, [List-of Square] -> [List-of Square]
+          ; consumes a QP and a list of squares, and updates the threatened status of every unthreatened square threatened by a QP
+          (define (update-all-threatened los)
+            (map (lambda (s) (if (squarey-threatened? s) s ; if already threatened return square, otherwise return an identical square with the threatened status equal to the result of the "threatened?" function
+                   (make-squarey (squarey-x s) (squarey-y s) (threatening? (make-posn (squarey-x s) (squarey-y s)) qp)))) los)))
+    ;-IN-
+    (make-board (cons qp (board-queens a-board)) (update-all-threatened (board-squares a-board)))))
  
 ; Board -> [List-of QP]
 ; finds spots where it is still safe to place a queen
+; I think this might be a lot slower than the other version!!
 (define (find-open-spots a-board)
-  (board-spots a-board))
-
-
+  (local (; Board, QP -> Boolean
+          ; Returns true if a QP does not match any QP in the board's list of queens (else returns false since a QP is already "occupied")
+          (define (not-qp? a-qp)
+            (andmap (lambda (qp) (not (equal? qp a-qp))) (board-queens a-board))))
+  (filter not-qp? ; makes sure i'm not returning any positions already occupied by a queen! 
+   (map
+    (lambda (s) (make-posn (squarey-x s) (squarey-y s))) ; turn the result of filter into a list of qp's
+    (filter (lambda (s) (false? (squarey-threatened? s))) (board-squares a-board)))))) ; get the list of all squares where threatened is false

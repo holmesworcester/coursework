@@ -1,6 +1,6 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
-#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |456|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
+#reader(lib "htdp-intermediate-lambda-reader.ss" "lang")((modname |483.1 (challenge)|) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #f #t none #f ())))
 (require 2htdp/image)
 
 (define QUEENS 8)
@@ -121,6 +121,23 @@
       ;-IN-
       (and (equal? n (length lqp)) (none-threaten-others? lqp)))))
 
+; N -> [[List-of QP] -> Boolean]
+; produces a predicate function that returns true if a given list of queen placements is a valid solution for
+; an n-queens problem of order n. If it's not a solution, it returns false. That is, if the list of queens is not of length n,
+; or if any queens threaten each other, it returns false. Otherwise it returns true.
+
+(check-expect ((nq-solution-andmap? 2) LQP) #f)
+(check-expect ((nq-solution-andmap? 4) 4-SOLUTION) #t)
+
+(define (nq-solution-andmap? n)
+  (lambda (lqp)
+    (local (; [List-of QP] -> Boolean
+            ; can I define this with two andmaps?
+            (define (none-threaten-others? a-lqp)
+              (andmap (lambda (qp) (andmap (lambda (qp-other) (not (threatening? qp qp-other))) lqp)) lqp))) ; cooooool.
+      ;-IN-
+      (and (equal? n (length lqp)) (none-threaten-others? lqp)))))
+    
 ; N -> [Maybe [List-of QP]]
 ; find a solution to the n queens problem. If there is no solution returns false. If there is a solution, returns the solution
 ; as a list of QP
@@ -168,8 +185,8 @@
 
 (check-expect ((n-queens-solution? 4) (place-queens (board0 4) 4)) #t)
 (check-expect ((n-queens-solution? 5) (place-queens (board0 5) 5)) #t)
-; (check-expect ((n-queens-solution? 2) (place-queens (board0 2) 2)) #f)
-
+(check-expect (place-queens (board0 2) 2) #f)
+(check-expect (place-queens (board0 3) 3) #f)
 
 (define (place-queens board n)
   (cond
@@ -180,18 +197,18 @@
               (define successful-tries
                 (filter (lambda (result) (not (false? result))) (map (lambda (open-spot) (place-queens (add-queen board open-spot) (- n 1))) (find-open-spots board))))) ; try every open spot, return the first true.
         ;-IN-
-        (if (cons? successful-tries) (first successful-tries) #false))])) ; if there are successful tries, return them.
+        (if (cons? successful-tries) (first successful-tries) #false))])) ; if there are successful tries, return one of them.
 
 ; IMPORTANT: I think this gets easier if the definition of board includes two LQP's: possible positions and used positions.
 ; That way, if place-queens returns false on a board with a queen placed in a certain position,
 ; you call the function on a new board with that position removed as a possibility, even though it's not occupied by a queen.
 ; that way the function keeps throwing out paths that fail while recursively generating sets of LQP's that work.
 
-; Data definition of board.
-; A Board is a structure [List-of QP], [List-of QP]
-(define-struct board (queens spots))
-; interpretation: Queens is the LQP describing where queens have been placed. Spots is the LQP describing spaces
-; on the board that are neither open nor unthreatened by a queen.
+; NEW Data definition of board.
+
+; A Board is a structure [List-of QP] N
+(define-struct board (queens n)) 
+; interpretation: a list of queen positions on the board, and a dimension N to describe the size of the board
 
 ; Board -> [List-of QP]]
 ; returns the list of QP's of a given board
@@ -200,41 +217,33 @@
 
 ; N -> Board 
 ; creates the initial n by n board
-
-(check-expect (board0 2) (make-board '() (list (make-posn 0 0) (make-posn 1 0) (make-posn 0 1) (make-posn 1 1))))
-
 (define (board0 n)
-  (local (; N -> [List of QP]
-          (define (all-posn n)
-            (foldr append '() (build-list n (lambda (y) (build-list n (lambda (x) (make-posn x y))))))))
-    ;-IN-
-    (make-board '() (all-posn n))))
+  (make-board '() n))
 
 ; Board QP -> Board 
 ; places a queen at qp on a-board
 ; must update list of queens but also remove her new spot and all threatened spots from available.
 
-(check-expect (add-queen (board0 2) (make-posn 0 0)) (make-board (list (make-posn 0 0)) '())) 
-
 (define (add-queen a-board qp)
-  (local (; [List-of QP] -> [List-of QP]
-          ; removes the new QP and all new threatened QP's from a [List-of QP]
-          (define (remove-unavailable lqp)
-            (local (; QP -> Boolean
-                    ; checks to see if it's still an available spot, that is, 
-                    ; not threatened by the new QP, and not the same as the new QP
-                    (define (still-available? a-qp)
-                      (and (not (threatening? qp a-qp)) ; available qp isn't threatened by the new queen.
-                           (not (equal? qp a-qp))))) ; available qp isn't the same as the new qp.
-              ;-IN-
-            (filter still-available? lqp))))
-    (make-board
-     (cons qp (board-queens a-board)) ; add queen to the list of queens
-     (remove-unavailable (board-spots a-board))))) ; remove newly unavailable from the list of spots
+  (make-board (cons qp (board-queens a-board)) (board-n a-board)))
  
 ; Board -> [List-of QP]
 ; finds spots where it is still safe to place a queen
+; I think this might be a lot slower than the other version!!
 (define (find-open-spots a-board)
-  (board-spots a-board))
-
-
+  (local (; Get board dimension as a constant
+          (define n (board-n a-board))
+          ; Get a constant of all positions on the board
+          (define all-spots (foldr append '() (build-list n (lambda (y) (build-list n (lambda (x) (make-posn x y)))))))
+          ; QP, [List-of QP] -> [List-of QP]
+          ; Removes all QP's from a list that are occupied or threatened by a single QP.
+          (define (remove-unavailable queen-here list-of-spots)
+            (local (; QP, QP -> Boolean
+                    ; checks to see if it's still an available spot, that is, 
+                    ; not threatened by the new QP, and not the same as the new QP
+                    (define (still-available? a-spot)
+                      (and (not (threatening? queen-here a-spot)) ; available qp isn't threatened by the new queen.
+                           (not (equal? queen-here a-spot))))) ; available qp isn't the same as the new qp.
+              ;-IN-
+            (filter still-available? list-of-spots))))
+    (foldr remove-unavailable all-spots (board-queens a-board))))
